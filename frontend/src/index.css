@@ -9,12 +9,10 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
-    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: "JetBrains Mono", "Space Grotesk", -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #18181b; /* zinc-900 */
+  background-color: #0c0a15; /* background-dark */
 }
 
 html {
@@ -22,6 +20,40 @@ html {
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* App utilities */
+.glass-panel {
+  background: rgba(22, 20, 37, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.glow-button {
+  box-shadow: 0 0 20px rgba(109, 40, 217, 0.5);
+  transition: all 0.3s ease;
+}
+
+.glow-button:hover {
+  box-shadow: 0 0 30px rgba(109, 40, 217, 0.7);
+}
+
+.terminal-line::before {
+  content: ">";
+  margin-right: 0.5rem;
+  color: #6d28d9;
+}
+
+.scanline {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(0, 0, 0, 0.08)
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
 }
