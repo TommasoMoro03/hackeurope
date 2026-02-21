@@ -7,6 +7,7 @@ import { api } from '@/lib/axios';
 import { projectCache } from '@/services/projectCache.service';
 import { AppBackground } from '@/components/ui/app-background';
 import { DashboardNav } from '@/components/DashboardNav';
+import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { ExperimentForm } from '@/components/ExperimentForm';
 import { ExperimentTabs } from '@/components/ExperimentTabs';
 import { ExperimentProgress } from '@/components/ExperimentProgress';
@@ -236,18 +237,24 @@ export const Dashboard = () => {
       <DashboardNav
         user={user}
         project={project}
-        experiments={experiments}
-        selectedExperiment={selectedExperiment}
-        experimentView={experimentView}
         showRepoPopup={showRepoPopup}
-        onSelectExperiment={setSelectedExperiment}
-        onExperimentViewChange={setExperimentView}
         onTogglePopup={() => setShowRepoPopup(!showRepoPopup)}
         onLogout={logout}
         onDisconnect={handleDisconnect}
       />
 
       <div className="flex flex-1 min-h-0">
+        <DashboardSidebar
+          project={project}
+          experiments={experiments}
+          selectedExperiment={selectedExperiment}
+          experimentView={experimentView}
+          user={user}
+          onSelectExperiment={(exp) => setSelectedExperiment(exp)}
+          onExperimentViewChange={setExperimentView}
+          onToggleRepoPopup={() => setShowRepoPopup(!showRepoPopup)}
+          onLogout={logout}
+        />
         <div
           className={cn(
             'flex-1 relative z-20 flex flex-col min-h-0',
