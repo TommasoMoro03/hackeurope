@@ -281,6 +281,7 @@ export const Dashboard = () => {
                   experiment={selectedExperiment}
                   onFinish={handleFinishExperiment}
                   onExperimentUpdate={handleExperimentUpdate}
+                  onCreateExperiment={handleCreateExperiment}
                 />
                 {finishingExperiment && (
                   <ExperimentFinishing
