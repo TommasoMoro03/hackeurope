@@ -103,6 +103,12 @@ export const Dashboard = () => {
     }
   }, [loading, project, navigate]);
 
+  useEffect(() => {
+    if (selectedExperiment?.status === 'failed') {
+      setExperimentView('details');
+    }
+  }, [selectedExperiment?.status]);
+
   const fetchExperiments = async () => {
     try {
       const response = await api.get('/api/experiments');
@@ -122,20 +128,6 @@ export const Dashboard = () => {
     } catch (err) {
       setError('Failed to disconnect repository');
       toast.error('Failed to disconnect');
-    }
-  };
-
-  const handleSwitchRepository = async () => {
-    try {
-      await api.delete('/api/github/project');
-      projectCache.clear();
-      queryClient.setQueryData(['github-project'], null);
-      setError(null);
-      toast.success('Select a new repository');
-      navigate('/connect-github', { replace: true });
-    } catch (err) {
-      setError('Failed to switch repository');
-      toast.error('Failed to switch repository');
     }
   };
 
@@ -253,7 +245,6 @@ export const Dashboard = () => {
         onTogglePopup={() => setShowRepoPopup(!showRepoPopup)}
         onLogout={logout}
         onDisconnect={handleDisconnect}
-        onSwitchRepository={handleSwitchRepository}
       />
 
       <div className="flex flex-1 min-h-0">
@@ -299,7 +290,7 @@ export const Dashboard = () => {
               />
             ) : (
               <div className="flex flex-col h-full min-h-0">
-                {experimentView === 'details' ? (
+                {experimentView === 'details' || selectedExperiment.status === 'failed' ? (
                   <ExperimentDetails
                     experiment={selectedExperiment}
                     onExperimentUpdate={handleExperimentUpdate}

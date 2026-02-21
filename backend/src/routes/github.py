@@ -90,13 +90,10 @@ async def link_repository(
     Creates a project record in the database.
     """
     try:
-        # Check if user already has a project
+        # If user already has a project (e.g. switching repository), delete it (in same tx)
         existing_project = db.query(Project).filter(Project.user_id == current_user.id).first()
         if existing_project:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User already has a linked project"
-            )
+            db.delete(existing_project)
 
         # Get all repos to find the selected one
         repos = await GitHubService.get_user_repos(request.access_token)

@@ -20,14 +20,12 @@ interface RepoInfoPopupProps {
   project: Project;
   onClose: () => void;
   onDisconnect?: () => Promise<void>;
-  onSwitchRepository?: () => Promise<void>;
 }
 
 export const RepoInfoPopup = ({
   project,
   onClose,
   onDisconnect,
-  onSwitchRepository,
 }: RepoInfoPopupProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,17 +34,6 @@ export const RepoInfoPopup = ({
     setIsLoading(true);
     try {
       await onDisconnect();
-      onClose();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSwitch = async () => {
-    if (!onSwitchRepository) return;
-    setIsLoading(true);
-    try {
-      await onSwitchRepository();
       onClose();
     } finally {
       setIsLoading(false);
@@ -95,15 +82,6 @@ export const RepoInfoPopup = ({
           </div>
 
           <div className="flex flex-col gap-2 pt-2">
-            {onSwitchRepository && (
-              <button
-                onClick={handleSwitch}
-                disabled={isLoading}
-                className="w-full px-3 py-2 text-sm font-mono text-primary-glow hover:bg-primary/10 rounded-lg border border-primary/30 transition-colors disabled:opacity-50"
-              >
-                {isLoading ? 'Switching...' : 'Switch repository'}
-              </button>
-            )}
             {onDisconnect && (
               <button
                 onClick={handleDisconnect}

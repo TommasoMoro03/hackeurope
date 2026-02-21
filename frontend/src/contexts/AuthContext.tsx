@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { authService } from '@/services/auth.service';
+import { projectCache } from '@/services/projectCache.service';
 import type { User, LoginCredentials, SignupCredentials } from '@/types/auth';
 import toast from 'react-hot-toast';
 
@@ -20,6 +22,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Load user on mount - optimistic: use cache if available for instant load
   useEffect(() => {
@@ -52,6 +55,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (credentials: LoginCredentials) => {
     try {
       const tokens = await authService.login(credentials);
+      projectCache.clear();
+      queryClient.removeQueries({ queryKey: ['github-project'] });
       authService.setTokens(tokens);
 
       const userData = await authService.getCurrentUser();
@@ -70,6 +75,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (credentials: SignupCredentials) => {
     try {
       const tokens = await authService.signup(credentials);
+      projectCache.clear();
+      queryClient.removeQueries({ queryKey: ['github-project'] });
       authService.setTokens(tokens);
 
       const userData = await authService.getCurrentUser();
@@ -88,6 +95,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loginWithGoogle = async (code: string) => {
     try {
       const tokens = await authService.loginWithGoogle(code);
+      projectCache.clear();
+      queryClient.removeQueries({ queryKey: ['github-project'] });
       authService.setTokens(tokens);
 
       const userData = await authService.getCurrentUser();

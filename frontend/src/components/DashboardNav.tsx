@@ -44,7 +44,6 @@ interface DashboardNavProps {
   onTogglePopup: () => void;
   onLogout: () => void;
   onDisconnect?: () => Promise<void>;
-  onSwitchRepository?: () => Promise<void>;
 }
 
 export const DashboardNav = ({
@@ -59,7 +58,6 @@ export const DashboardNav = ({
   onTogglePopup,
   onLogout,
   onDisconnect,
-  onSwitchRepository,
 }: DashboardNavProps) => {
   const [expDropdownOpen, setExpDropdownOpen] = useState(false);
 
@@ -163,7 +161,7 @@ export const DashboardNav = ({
           </AnimatePresence>
         </div>
 
-        {/* Details | Run Test tabs when experiment selected */}
+        {/* Details | Run Test tabs when experiment selected (hide Run Test if failed) */}
         {selectedExperiment && (
           <>
             <div className="h-5 w-px bg-white/10" />
@@ -180,18 +178,20 @@ export const DashboardNav = ({
                 <FileText className="w-3 h-3" />
                 Details
               </button>
-              <button
-                onClick={() => onExperimentViewChange('live')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-mono uppercase tracking-wider transition-all',
-                  experimentView === 'live'
-                    ? 'bg-primary/30 text-white border border-primary/50'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                )}
-              >
-                <Play className="w-3 h-3" />
-                Run Test
-              </button>
+              {selectedExperiment.status !== 'failed' && (
+                <button
+                  onClick={() => onExperimentViewChange('live')}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-mono uppercase tracking-wider transition-all',
+                    experimentView === 'live'
+                      ? 'bg-primary/30 text-white border border-primary/50'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  )}
+                >
+                  <Play className="w-3 h-3" />
+                  Run Test
+                </button>
+              )}
             </div>
           </>
         )}
@@ -221,7 +221,6 @@ export const DashboardNav = ({
               project={project}
               onClose={onTogglePopup}
               onDisconnect={onDisconnect}
-              onSwitchRepository={onSwitchRepository}
             />
           )}
         </div>
