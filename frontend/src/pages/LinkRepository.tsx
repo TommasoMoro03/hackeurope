@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button } from '@/components/Button';
+import { motion } from 'framer-motion';
 import { api } from '@/lib/axios';
+import { AuroraBackground } from '@/components/ui/aurora-background';
+import { Card } from '@/components/ui/card-hover-effect';
+import { Github, Lock, Star, GitFork } from 'lucide-react';
 
 interface Repository {
   id: number;
@@ -37,15 +40,12 @@ export const LinkRepository = () => {
   const handleOAuthCallback = async (code: string) => {
     try {
       setLoading(true);
-      // Exchange code for token
       const callbackResponse = await api.get(`/api/github/callback?code=${code}`);
       const accessToken = callbackResponse.data.access_token;
 
-      // Fetch repos
       const reposResponse = await api.get(`/api/github/repos?access_token=${accessToken}`);
       setRepos(reposResponse.data.repos);
 
-      // Store access token temporarily in session storage
       sessionStorage.setItem('github_access_token', accessToken);
       setError(null);
     } catch (err: any) {
@@ -70,10 +70,7 @@ export const LinkRepository = () => {
         access_token: accessToken
       });
 
-      // Clear token from session storage
       sessionStorage.removeItem('github_access_token');
-
-      // Redirect to dashboard
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to link repository');
@@ -84,84 +81,124 @@ export const LinkRepository = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading repositories...</p>
-        </div>
-      </div>
+      <AuroraBackground className="min-h-screen flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="relative z-10 text-center"
+        >
+          <div className="h-12 w-12 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-zinc-400">Loading repositories...</p>
+        </motion.div>
+      </AuroraBackground>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white shadow rounded-lg p-6 max-w-md">
-          <h2 className="text-xl font-bold text-red-600 mb-4">Error</h2>
-          <p className="text-gray-700 mb-4">{error}</p>
-          <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
-        </div>
-      </div>
+      <AuroraBackground className="min-h-screen flex items-center justify-center px-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative z-10 rounded-2xl border border-red-500/30 bg-zinc-900/90 backdrop-blur-xl p-8 max-w-md"
+        >
+          <h2 className="text-xl font-bold text-red-400 mb-4">Error</h2>
+          <p className="text-zinc-300 mb-6">{error}</p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-6 py-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-white font-medium transition-colors"
+          >
+            Back to Dashboard
+          </button>
+        </motion.div>
+      </AuroraBackground>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Select a Repository</h1>
-          <p className="mt-2 text-gray-600">
-            Choose a repository to link to your project. You'll be able to track experiments and analytics for this repository.
+    <AuroraBackground className="min-h-screen py-12">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10"
+        >
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <Github className="w-8 h-8 text-violet-400" />
+            Select a Repository
+          </h1>
+          <p className="mt-2 text-zinc-400">
+            Choose a repository to link to your project. You&apos;ll be able to track experiments and analytics for this repository.
           </p>
-        </div>
+        </motion.div>
 
         {repos.length === 0 ? (
-          <div className="bg-white shadow rounded-lg p-6 text-center">
-            <p className="text-gray-600">No repositories found with write access.</p>
-            <Button onClick={() => navigate('/dashboard')} className="mt-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-zinc-700/50 bg-zinc-900/50 p-12 text-center"
+          >
+            <p className="text-zinc-400 mb-4">No repositories found with write access.</p>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-6 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
+            >
               Back to Dashboard
-            </Button>
-          </div>
+            </button>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {repos.map((repo) => (
-              <div
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {repos.map((repo, i) => (
+              <motion.div
                 key={repo.id}
-                className="bg-white shadow rounded-lg p-5 hover:shadow-lg transition-shadow cursor-pointer group"
-                onClick={() => !linking && handleSelectRepo(repo)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
               >
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                    {repo.name}
-                  </h3>
-                  {repo.private && (
-                    <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
-                      Private
-                    </span>
+                <Card
+                  onClick={() => !linking && handleSelectRepo(repo)}
+                  className={linking ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-lg font-semibold text-white group-hover:text-violet-400 transition-colors truncate">
+                      {repo.name}
+                    </h3>
+                    {repo.private && (
+                      <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded-full">
+                        <Lock className="w-3 h-3" />
+                        Private
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-zinc-500 truncate">{repo.full_name}</p>
+
+                  {repo.description && (
+                    <p className="text-sm text-zinc-400 line-clamp-2">{repo.description}</p>
                   )}
-                </div>
 
-                <p className="text-sm text-gray-500 mb-3 truncate">{repo.full_name}</p>
-
-                {repo.description && (
-                  <p className="text-sm text-gray-700 mb-3 line-clamp-2">{repo.description}</p>
-                )}
-
-                <div className="flex items-center gap-4 text-xs text-gray-500">
-                  {repo.language && (
+                  <div className="flex items-center gap-4 text-xs text-zinc-500 mt-auto">
+                    {repo.language && (
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-violet-500" />
+                        {repo.language}
+                      </span>
+                    )}
                     <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                      {repo.language}
+                      <Star className="w-3.5 h-3.5" />
+                      {repo.stars_count}
                     </span>
-                  )}
-                  <span>⭐ {repo.stars_count}</span>
-                  <span>🍴 {repo.forks_count}</span>
-                </div>
-              </div>
+                    <span className="flex items-center gap-1">
+                      <GitFork className="w-3.5 h-3.5" />
+                      {repo.forks_count}
+                    </span>
+                  </div>
+                </Card>
+              </motion.div>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </AuroraBackground>
   );
 };

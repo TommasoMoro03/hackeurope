@@ -1,4 +1,5 @@
 import { forwardRef, InputHTMLAttributes } from 'react';
+import { cn } from '@/lib/utils';
 
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -6,20 +7,22 @@ interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, error, ...props }, ref) => {
+  ({ label, error, className, ...props }, ref) => {
     return (
       <div className="w-full">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-zinc-300 mb-1">
           {label}
         </label>
         <input
           ref={ref}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all ${
-            error ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={cn(
+            'w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500 outline-none transition-all',
+            error ? 'border-red-500' : 'border-zinc-600',
+            className
+          )}
           {...props}
         />
-        {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+        {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
       </div>
     );
   }
