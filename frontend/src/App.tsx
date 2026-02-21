@@ -9,9 +9,19 @@ import { Signup } from '@/pages/Signup';
 import { Dashboard } from '@/pages/Dashboard';
 import { LinkRepository } from '@/pages/LinkRepository';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 function App() {
+  // Debug logging
+  console.log('Environment variables:', {
+    VITE_API_URL: import.meta.env.VITE_API_URL,
+    VITE_GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID ? 'Set' : 'Missing'
+  });
+
+  if (!GOOGLE_CLIENT_ID) {
+    console.error('VITE_GOOGLE_CLIENT_ID is not set!');
+  }
+
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <BrowserRouter>
