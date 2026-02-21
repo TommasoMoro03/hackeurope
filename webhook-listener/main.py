@@ -12,7 +12,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Create tables (uses same models as backend through shared DB)
-# Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Webhook Listener Service",
