@@ -63,7 +63,7 @@ export const Card = ({
         background: useMotionTemplate`
         radial-gradient(
           600px circle at ${mouseX}px ${mouseY}px,
-          rgba(129, 140, 248, 0.15),
+          rgba(109, 40, 217, 0.2),
           transparent 40%
         )
       `,
@@ -71,7 +71,7 @@ export const Card = ({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className={cn(
-        "group relative flex h-full w-full rounded-xl border border-white/10 bg-zinc-900/50 p-6 transition duration-200 hover:border-violet-500/50",
+        "group relative flex h-full w-full rounded-xl border border-white/10 bg-zinc-900/50 p-6 transition duration-200 hover:border-primary/50",
         "cursor-pointer",
         className
       )}

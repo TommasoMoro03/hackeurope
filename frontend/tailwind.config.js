@@ -6,6 +6,18 @@ export default {
   ],
   theme: {
     extend: {
+      colors: {
+        primary: "#6d28d9",
+        "primary-glow": "#8b5cf6",
+        "background-dark": "#0c0a15",
+        "card-dark": "#161425",
+        "terminal-text": "#a5b4fc",
+      },
+      fontFamily: {
+        display: ["Space Grotesk", "sans-serif"],
+        serif: ["Playfair Display", "serif"],
+        mono: ["JetBrains Mono", "monospace"],
+      },
       keyframes: {
         blob: {
           "0%": { transform: "translate(0px, 0px) scale(1)" },
