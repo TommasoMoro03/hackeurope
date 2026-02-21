@@ -39,7 +39,7 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRepoPopup, setShowRepoPopup] = useState(false);
-  const [experiments, setExperiments] = useState<any[]>([]);
+  const [experiments] = useState<any[]>([]);
 
   const [form, setForm] = useState<ExperimentForm>({
     name: '',
