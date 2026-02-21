@@ -10,7 +10,7 @@ interface Segment {
   percentage: number;
 }
 
-interface ExperimentFormData {
+export interface ExperimentFormData {
   name: string;
   description: string;
   percentage: number;
@@ -22,6 +22,8 @@ interface ExperimentFormData {
 
 interface ExperimentFormProps {
   onSubmit: (data: ExperimentFormData) => void;
+  layout?: 'default' | 'cards';
+  percentageError?: string | null;
 }
 
 const DEFAULT_EXPERIMENT_NAME = 'New A/B Test';
@@ -29,7 +31,7 @@ const inputStyles =
   'w-full px-3 py-1.5 rounded border border-white/10 bg-black/30 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all font-mono text-xs';
 const labelStyles = 'block text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1.5';
 
-export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
+export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: percentageErrorProp }: ExperimentFormProps) => {
   const [form, setForm] = useState<ExperimentFormData>({
     name: DEFAULT_EXPERIMENT_NAME,
     description: '',
@@ -42,7 +44,8 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
       { name: 'Variant B', instructions: '', percentage: 0.5 },
     ],
   });
-  const [percentageError, setPercentageError] = useState<string | null>(null);
+  const [percentageErrorInternal, setPercentageError] = useState<string | null>(null);
+  const percentageError = percentageErrorProp ?? percentageErrorInternal;
 
   const handleSegmentChange = (index: number, field: 'name' | 'instructions' | 'percentage', value: string | number) => {
     const newSegments = [...form.segments];
@@ -72,11 +75,13 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
     onSubmit({ ...form, name: nameToSubmit, metrics: metricsText });
   };
 
+  const isCardsLayout = layout === 'cards';
+
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <form onSubmit={handleSubmit} className="flex-1 flex gap-4 min-h-0 min-w-0">
-        {/* Left: Main config */}
-        <aside className="w-72 shrink-0">
+      <form onSubmit={handleSubmit} className={cn('flex-1 flex min-h-0 min-w-0', isCardsLayout ? 'flex-col gap-4' : 'gap-4')}>
+        {/* Left / Top: Main config */}
+        <aside className={isCardsLayout ? 'w-full' : 'w-72 shrink-0'}>
           <GlassPanel title="Test Configuration" className="flex flex-col h-full overflow-hidden rounded-xl">
             <div className="flex-1 overflow-y-auto p-3 space-y-3">
               <div>
@@ -151,8 +156,8 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
           </GlassPanel>
         </aside>
 
-        {/* Right: Two segment cards */}
-        <main className="flex-1 flex gap-4 min-w-0">
+        {/* Right / Below: Two segment cards */}
+        <main className={cn('flex min-w-0', isCardsLayout ? 'flex-col gap-4 md:flex-row' : 'flex-1 gap-4')}>
           {/* Control card */}
           <div className="flex-1 flex flex-col min-w-0">
             <GlassPanel title="Control" className="flex-1 flex flex-col overflow-hidden rounded-xl border-slate-700/50">

@@ -8,14 +8,10 @@ import { projectCache } from '@/services/projectCache.service';
 import { AppBackground } from '@/components/ui/app-background';
 import { DashboardNav } from '@/components/DashboardNav';
 import { DashboardSidebar } from '@/components/DashboardSidebar';
-import { ExperimentForm } from '@/components/ExperimentForm';
-import { ExperimentTabs } from '@/components/ExperimentTabs';
-import { ExperimentProgress } from '@/components/ExperimentProgress';
-import { ExperimentDetails } from '@/components/ExperimentDetails';
-import { ExperimentLivePreview } from '@/components/ExperimentLivePreview';
+import { UnifiedExperimentWorkspace } from '@/components/UnifiedExperimentWorkspace';
 import { ExperimentFinishing } from '@/components/ExperimentFinishing';
 import { ExperimentMergePR } from '@/components/ExperimentMergePR';
-import { cn } from '@/lib/utils';
+import type { ExperimentFormData } from '@/components/ExperimentForm';
 
 interface Project {
   id: number;
@@ -51,16 +47,6 @@ interface Experiment {
   created_at: string;
 }
 
-interface ExperimentFormData {
-  name: string;
-  description: string;
-  percentage: number;
-  numSegments: number;
-  metrics: string;
-  preview_url: string;
-  segments: { name: string; instructions: string; percentage: number }[];
-}
-
 export const Dashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -70,7 +56,6 @@ export const Dashboard = () => {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [creatingExperiment, setCreatingExperiment] = useState<{ id: number; name: string } | null>(null);
-  const [experimentView, setExperimentView] = useState<'details' | 'live'>('details');
   const [finishingExperiment, setFinishingExperiment] = useState<{ id: number; name: string } | null>(null);
 
   const { data: project, isLoading: loading } = useQuery({
@@ -104,11 +89,6 @@ export const Dashboard = () => {
     }
   }, [loading, project, navigate]);
 
-  useEffect(() => {
-    if (selectedExperiment?.status === 'failed') {
-      setExperimentView('details');
-    }
-  }, [selectedExperiment?.status]);
 
   const fetchExperiments = async () => {
     try {
@@ -248,39 +228,40 @@ export const Dashboard = () => {
           project={project}
           experiments={experiments}
           selectedExperiment={selectedExperiment}
-          experimentView={experimentView}
           user={user}
           onSelectExperiment={(exp) => setSelectedExperiment(exp)}
-          onExperimentViewChange={setExperimentView}
           onToggleRepoPopup={() => setShowRepoPopup(!showRepoPopup)}
           onLogout={logout}
         />
-        <div
-          className={cn(
-            'flex-1 relative z-20 flex flex-col min-h-0',
-            selectedExperiment && experimentView === 'live' ? 'overflow-hidden p-4' : 'overflow-y-auto p-6'
-          )}
-        >
+        <div className="flex-1 relative z-20 flex flex-col min-h-0 overflow-y-auto p-6">
           {error && (
             <div className="mb-4 glass-panel-vibe border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
               {error}
             </div>
           )}
 
-          {creatingExperiment && (
-            <ExperimentProgress
-              experimentId={creatingExperiment.id}
-              experimentName={creatingExperiment.name}
-              onComplete={handleExperimentComplete}
-            />
-          )}
-          {!creatingExperiment && selectedExperiment && (
-            (selectedExperiment.status === 'active' || selectedExperiment.status === 'finishing' || selectedExperiment.status === 'finished') ? (
+          {(() => {
+            const showMergePR = selectedExperiment &&
+              ['started', 'implementing', 'pr_created'].includes(selectedExperiment.status);
+            if (showMergePR) {
+              return (
+                <ExperimentMergePR
+                  experimentName={selectedExperiment!.name}
+                  onMerged={handlePRMerged}
+                />
+              );
+            }
+            return (
               <>
-                <ExperimentTabs
-                  experiment={selectedExperiment}
-                  onFinish={handleFinishExperiment}
+                <UnifiedExperimentWorkspace
+                  mode={creatingExperiment ? 'loading' : selectedExperiment ? 'experiment' : 'planning'}
+                  onCreateExperiment={handleCreateExperiment}
+                  creatingExperiment={creatingExperiment}
+                  onCreationComplete={handleExperimentComplete}
+                  selectedExperiment={selectedExperiment ?? undefined}
                   onExperimentUpdate={handleExperimentUpdate}
+                  onFinish={handleFinishExperiment}
+                  project={project}
                 />
                 {finishingExperiment && (
                   <ExperimentFinishing
@@ -290,32 +271,8 @@ export const Dashboard = () => {
                   />
                 )}
               </>
-            ) : selectedExperiment.status === 'started' || selectedExperiment.status === 'implementing' || selectedExperiment.status === 'pr_created' ? (
-              <ExperimentMergePR
-                experimentName={selectedExperiment.name}
-                onMerged={handlePRMerged}
-              />
-            ) : (
-              <div className="flex flex-col h-full min-h-0">
-                {experimentView === 'details' || selectedExperiment.status === 'failed' ? (
-                  <ExperimentDetails
-                    experiment={selectedExperiment}
-                    onExperimentUpdate={handleExperimentUpdate}
-                  />
-                ) : (
-                  <div className="flex-1 min-h-0 overflow-hidden">
-                    <ExperimentLivePreview
-                      experiment={selectedExperiment}
-                      project={project}
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          )}
-          {!creatingExperiment && !selectedExperiment && (
-            <ExperimentForm onSubmit={handleCreateExperiment} />
-          )}
+            );
+          })()}
         </div>
       </div>
     </AppBackground>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FlaskConical, Plus, Github, LogOut, FileText, Play } from 'lucide-react';
+import { FlaskConical, Plus, Github, LogOut } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar';
 
 interface Project {
@@ -17,10 +17,8 @@ interface DashboardSidebarProps<T extends ExperimentItem = ExperimentItem> {
   project: Project;
   experiments: T[];
   selectedExperiment: T | null;
-  experimentView: 'details' | 'live';
   user: { username?: string; email?: string } | null;
   onSelectExperiment: (exp: T | null) => void;
-  onExperimentViewChange: (view: 'details' | 'live') => void;
   onToggleRepoPopup: () => void;
   onLogout: () => void;
 }
@@ -29,10 +27,8 @@ export function DashboardSidebar<T extends ExperimentItem = ExperimentItem>({
   project,
   experiments,
   selectedExperiment,
-  experimentView,
   user,
   onSelectExperiment,
-  onExperimentViewChange,
   onToggleRepoPopup,
   onLogout,
 }: DashboardSidebarProps<T>) {
@@ -43,10 +39,8 @@ export function DashboardSidebar<T extends ExperimentItem = ExperimentItem>({
           project={project}
           experiments={experiments}
           selectedExperiment={selectedExperiment}
-          experimentView={experimentView}
           user={user}
           onSelectExperiment={onSelectExperiment}
-          onExperimentViewChange={onExperimentViewChange}
           onToggleRepoPopup={onToggleRepoPopup}
           onLogout={onLogout}
         />
@@ -59,13 +53,11 @@ function DashboardSidebarContent<T extends ExperimentItem>({
   project,
   experiments,
   selectedExperiment,
-  experimentView,
   user,
   onSelectExperiment,
-  onExperimentViewChange,
   onToggleRepoPopup,
   onLogout,
-}: Omit<DashboardSidebarProps<T>, 'project'> & { project: Project }) {
+}: DashboardSidebarProps<T>) {
   const { open } = useSidebar();
 
   return (
@@ -125,36 +117,6 @@ function DashboardSidebarContent<T extends ExperimentItem>({
             ))}
           </div>
 
-          {/* Details | Run Test when experiment selected */}
-          {selectedExperiment && selectedExperiment.status !== 'failed' && (
-            <div className="mt-4 border-t border-white/5 pt-4">
-              {open && (
-                <div className="px-3 mb-2">
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
-                    View
-                  </span>
-                </div>
-              )}
-              <div className="flex flex-col gap-1">
-                <SidebarLink
-                  link={{
-                    label: 'Details',
-                    icon: <FileText className="h-4 w-4 shrink-0" />,
-                  }}
-                  onClick={() => onExperimentViewChange('details')}
-                  active={experimentView === 'details'}
-                />
-                <SidebarLink
-                  link={{
-                    label: 'Run Test',
-                    icon: <Play className="h-4 w-4 shrink-0" />,
-                  }}
-                  onClick={() => onExperimentViewChange('live')}
-                  active={experimentView === 'live'}
-                />
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Bottom: Repo + User + Logout */}

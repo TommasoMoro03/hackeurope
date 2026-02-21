@@ -1,0 +1,101 @@
+import { useState, useEffect } from 'react';
+import { GlassPanel } from '@/components/ui/glass-panel';
+import { api } from '@/lib/axios';
+
+interface EventData {
+  id: number;
+  event_json: {
+    event_id: string;
+    segment_id: number;
+    segment_name: string;
+    experiment_id: number;
+    project_id: number;
+    timestamp: string;
+    user_id?: string;
+    metadata?: Record<string, unknown>;
+  };
+  created_at: string;
+}
+
+interface ExperimentDataCardProps {
+  experimentId: number;
+}
+
+export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) => {
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/api/experiments/${experimentId}/events`);
+      setEvents(response.data);
+      setError(null);
+    } catch (err: unknown) {
+      setError('Failed to load event data');
+      console.error('Error fetching events:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+  }, [experimentId]);
+
+  return (
+    <GlassPanel title="Raw Data" className="rounded-xl flex-1 min-h-0 overflow-hidden">
+      <div className="p-4 overflow-y-auto max-h-[300px]">
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-xs text-slate-500">Loading event data...</p>
+          </div>
+        )}
+        {error && (
+          <div className="text-xs text-red-400 border border-red-500/30 rounded-lg px-3 py-2">
+            {error}
+          </div>
+        )}
+        {!loading && !error && events.length === 0 && (
+          <p className="text-xs text-slate-500 text-center py-4">No events tracked yet</p>
+        )}
+        {!loading && !error && events.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-mono">
+                {events.length} events
+              </span>
+              <button
+                onClick={fetchEvents}
+                className="text-[10px] text-primary hover:text-primary-glow font-medium"
+              >
+                Refresh
+              </button>
+            </div>
+            <div className="space-y-2 overflow-x-auto">
+              {events.slice(0, 10).map((event) => (
+                <div
+                  key={event.id}
+                  className="p-2 rounded border border-white/5 bg-black/20 text-xs font-mono"
+                >
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-400 truncate">{event.event_json.event_id}</span>
+                    <span className="text-primary-glow shrink-0">{event.event_json.segment_name}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    {new Date(event.event_json.timestamp).toLocaleString()}
+                    {event.event_json.user_id && ` • ${event.event_json.user_id}`}
+                  </div>
+                </div>
+              ))}
+              {events.length > 10 && (
+                <p className="text-[10px] text-slate-500">+{events.length - 10} more</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </GlassPanel>
+  );
+};

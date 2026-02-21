@@ -9,6 +9,7 @@ import {
   Palette,
   Zap,
   TrendingUp,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,9 +20,21 @@ interface ExperimentLivePreviewProps {
 
 type ViewMode = 'split' | 'mobile' | 'desktop';
 
-const DEFAULT_CONTROL_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-slate-100 p-8 font-sans"><div class="max-w-2xl mx-auto"><h1 class="text-3xl font-bold text-slate-800 mb-4">Original Baseline</h1><p class="text-slate-600 mb-6">This is the control version. Conversion rate: 2.4%</p><div class="flex gap-4"><button class="px-6 py-3 bg-slate-400 text-white rounded-lg">Sign Up</button><a href="#" class="px-6 py-3 border border-slate-400 text-slate-600 rounded-lg">Learn More</a></div><div class="mt-12 grid grid-cols-3 gap-4"><div class="h-24 bg-slate-200 rounded"></div><div class="h-24 bg-slate-200 rounded"></div><div class="h-24 bg-slate-200 rounded"></div></div></div></body></html>`;
-
-const DEFAULT_VARIANT_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-slate-900 p-8 font-sans"><div class="max-w-2xl mx-auto"><h1 class="text-3xl font-bold text-white mb-4">AI Variant B</h1><p class="text-slate-400 mb-6">Higher contrast, stronger CTA. Projected lift: +12.4%</p><div class="flex gap-4"><button class="px-8 py-4 bg-violet-600 text-white rounded-lg font-bold shadow-lg shadow-violet-500/30 hover:bg-violet-500">Sign Up Now</button><a href="#" class="px-6 py-3 border border-white/30 text-slate-300 rounded-lg">Learn More</a></div><div class="mt-12 grid grid-cols-2 gap-4"><div class="h-32 bg-slate-800 rounded border border-white/10"></div><div class="h-32 bg-slate-800 rounded border border-white/10"></div></div></div></body></html>`;
+const PreviewSkeleton = () => (
+  <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 bg-black/40">
+    <Loader2 className="w-10 h-10 text-primary-glow animate-spin shrink-0" />
+    <div className="w-full max-w-[200px] space-y-3 animate-pulse">
+      <div className="h-3 bg-white/10 rounded w-full" />
+      <div className="h-3 bg-white/10 rounded w-[85%]" />
+      <div className="h-3 bg-white/10 rounded w-[70%]" />
+      <div className="grid grid-cols-3 gap-2 mt-4">
+        <div className="h-16 bg-white/10 rounded" />
+        <div className="h-16 bg-white/10 rounded" />
+        <div className="h-16 bg-white/10 rounded" />
+      </div>
+    </div>
+  </div>
+);
 
 export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('split');
@@ -69,7 +82,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                 onChange={(e) => setVariantUrl(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-white text-sm placeholder:text-slate-600 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none font-mono"
               />
-              <p className="text-[10px] text-slate-600">Leave empty to use demo previews</p>
+              <p className="text-[10px] text-slate-600">Enter your preview URL to see live content</p>
             </div>
 
             {/* Optimization Goal */}
@@ -257,7 +270,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                   <div className="size-2.5 rounded-full bg-emerald-500/20" />
                 </div>
                 <div className="mx-auto flex-1 max-w-[200px] h-4 bg-black/20 rounded text-[8px] flex items-center justify-center text-slate-600 font-mono truncate">
-                  {controlSrc || 'demo — control'}
+                  {controlSrc || '—'}
                 </div>
               </div>
               <div className="absolute inset-0 top-8">
@@ -270,12 +283,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <iframe
-                    srcDoc={DEFAULT_CONTROL_HTML}
-                    title="Control demo"
-                    className="w-full h-full border-0"
-                    sandbox="allow-scripts"
-                  />
+                  <PreviewSkeleton />
                 )}
               </div>
             </div>
@@ -309,7 +317,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                   <div className="size-2.5 rounded-full bg-white/10" />
                 </div>
                 <div className="mx-auto flex-1 max-w-[200px] h-4 bg-primary/10 border border-primary/20 rounded text-[8px] flex items-center justify-center text-primary/70 font-mono truncate">
-                  {variantSrc || 'demo — variant b'}
+                  {variantSrc || '—'}
                 </div>
               </div>
               <div className="absolute inset-0 top-8">
@@ -322,12 +330,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <iframe
-                    srcDoc={DEFAULT_VARIANT_HTML}
-                    title="Variant B demo"
-                    className="w-full h-full border-0"
-                    sandbox="allow-scripts"
-                  />
+                  <PreviewSkeleton />
                 )}
               </div>
             </div>
