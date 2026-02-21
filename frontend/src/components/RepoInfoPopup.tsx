@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface Project {
   id: number;
   name: string;
@@ -16,12 +18,43 @@ interface Project {
 interface RepoInfoPopupProps {
   project: Project;
   onClose: () => void;
+  onDisconnect?: () => Promise<void>;
+  onSwitchRepository?: () => Promise<void>;
 }
 
-export const RepoInfoPopup = ({ project, onClose }: RepoInfoPopupProps) => {
+export const RepoInfoPopup = ({
+  project,
+  onClose,
+  onDisconnect,
+  onSwitchRepository,
+}: RepoInfoPopupProps) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleDisconnect = async () => {
+    if (!onDisconnect) return;
+    setIsLoading(true);
+    try {
+      await onDisconnect();
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSwitch = async () => {
+    if (!onSwitchRepository) return;
+    setIsLoading(true);
+    try {
+      await onSwitchRepository();
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose}></div>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
       <div className="absolute left-0 top-12 z-50 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4">
         <div className="space-y-3">
           <div>
@@ -42,7 +75,7 @@ export const RepoInfoPopup = ({ project, onClose }: RepoInfoPopupProps) => {
           <div className="flex items-center gap-4 text-sm text-gray-500">
             {project.language && (
               <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                <span className="w-3 h-3 rounded-full bg-blue-500" />
                 {project.language}
               </span>
             )}
@@ -59,6 +92,27 @@ export const RepoInfoPopup = ({ project, onClose }: RepoInfoPopupProps) => {
 
           <div className="text-xs text-gray-400 pt-2 border-t">
             Linked {new Date(project.created_at).toLocaleDateString()}
+          </div>
+
+          <div className="flex flex-col gap-2 pt-2">
+            {onSwitchRepository && (
+              <button
+                onClick={handleSwitch}
+                disabled={isLoading}
+                className="w-full px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-md transition-colors disabled:opacity-50"
+              >
+                {isLoading ? 'Switching...' : 'Switch repository'}
+              </button>
+            )}
+            {onDisconnect && (
+              <button
+                onClick={handleDisconnect}
+                disabled={isLoading}
+                className="w-full px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+              >
+                {isLoading ? 'Disconnecting...' : 'Disconnect'}
+              </button>
+            )}
           </div>
         </div>
       </div>

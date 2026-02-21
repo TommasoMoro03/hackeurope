@@ -22,9 +22,19 @@ interface DashboardNavProps {
   showRepoPopup: boolean;
   onTogglePopup: () => void;
   onLogout: () => void;
+  onDisconnect?: () => Promise<void>;
+  onSwitchRepository?: () => Promise<void>;
 }
 
-export const DashboardNav = ({ user, project, showRepoPopup, onTogglePopup, onLogout }: DashboardNavProps) => {
+export const DashboardNav = ({
+  user,
+  project,
+  showRepoPopup,
+  onTogglePopup,
+  onLogout,
+  onDisconnect,
+  onSwitchRepository,
+}: DashboardNavProps) => {
   return (
     <nav className="bg-white shadow">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -50,7 +60,12 @@ export const DashboardNav = ({ user, project, showRepoPopup, onTogglePopup, onLo
                 )}
               </button>
               {showRepoPopup && (
-                <RepoInfoPopup project={project} onClose={onTogglePopup} />
+                <RepoInfoPopup
+                project={project}
+                onClose={onTogglePopup}
+                onDisconnect={onDisconnect}
+                onSwitchRepository={onSwitchRepository}
+              />
               )}
             </div>
           </div>

@@ -1,5 +1,6 @@
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/Button';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/axios';
 import { DashboardNav } from '@/components/DashboardNav';
@@ -51,6 +52,7 @@ interface ExperimentFormData {
 }
 
 export const Dashboard = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,12 @@ export const Dashboard = () => {
     fetchProject();
     fetchExperiments();
   }, []);
+
+  useEffect(() => {
+    if (!loading && !project) {
+      navigate('/connect-github', { replace: true });
+    }
+  }, [loading, project, navigate]);
 
   const fetchProject = async () => {
     try {
@@ -92,12 +100,28 @@ export const Dashboard = () => {
     }
   };
 
-  const handleLinkGitHub = async () => {
+  const handleDisconnect = async () => {
     try {
-      const response = await api.get('/api/github/link');
-      window.location.href = response.data.auth_url;
+      await api.delete('/api/github/project');
+      setProject(null);
+      setError(null);
+      toast.success('Repository disconnected');
     } catch (err) {
-      setError('Failed to initiate GitHub linking');
+      setError('Failed to disconnect repository');
+      toast.error('Failed to disconnect');
+    }
+  };
+
+  const handleSwitchRepository = async () => {
+    try {
+      await api.delete('/api/github/project');
+      setProject(null);
+      setError(null);
+      toast.success('Select a new repository');
+      navigate('/connect-github', { replace: true });
+    } catch (err) {
+      setError('Failed to switch repository');
+      toast.error('Failed to switch repository');
     }
   };
 
@@ -139,39 +163,7 @@ export const Dashboard = () => {
   }
 
   if (!project) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-700">{user?.username || user?.email}</span>
-                <Button onClick={logout} variant="outline">Logout</Button>
-              </div>
-            </div>
-          </div>
-        </nav>
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                {error}
-              </div>
-            )}
-            <div className="bg-white shadow rounded-lg p-6 text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Link Your Repository</h2>
-              <p className="text-gray-600 mb-6">
-                Connect your GitHub repository to get started with experiments and analytics.
-              </p>
-              <Button onClick={handleLinkGitHub}>Link GitHub Repository</Button>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -182,6 +174,8 @@ export const Dashboard = () => {
         showRepoPopup={showRepoPopup}
         onTogglePopup={() => setShowRepoPopup(!showRepoPopup)}
         onLogout={logout}
+        onDisconnect={handleDisconnect}
+        onSwitchRepository={handleSwitchRepository}
       />
 
       <div className="flex h-[calc(100vh-4rem)]">

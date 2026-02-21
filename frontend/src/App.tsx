@@ -8,6 +8,7 @@ import { Login } from '@/pages/Login';
 import { Signup } from '@/pages/Signup';
 import { Dashboard } from '@/pages/Dashboard';
 import { LinkRepository } from '@/pages/LinkRepository';
+import { ConnectGitHub } from '@/pages/ConnectGitHub';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -36,6 +37,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/connect-github"
+              element={
+                <ProtectedRoute>
+                  <ConnectGitHub />
                 </ProtectedRoute>
               }
             />
