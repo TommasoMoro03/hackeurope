@@ -64,7 +64,7 @@ export const ExperimentDetails = ({ experiment }: ExperimentDetailsProps) => {
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Segments</h3>
           <div className="space-y-4">
-            {experiment.segments.map((segment, index) => (
+            {experiment.segments.map((segment) => (
               <div key={segment.id} className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-medium text-gray-900">{segment.name}</h4>
