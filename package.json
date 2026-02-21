@@ -1,0 +1,37 @@
+{
+  "name": "hackeurope",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TommasoMoro03/hackeurope.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TommasoMoro03/hackeurope/issues"
+  },
+  "homepage": "https://github.com/TommasoMoro03/hackeurope#readme",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "@octokit/rest": "^22.0.1",
+    "@types/node": "^25.3.0",
+    "@types/react": "^19.2.14",
+    "autoprefixer": "^10.4.24",
+    "next": "^16.1.6",
+    "next-auth": "^4.24.13",
+    "postcss": "^8.5.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3"
+  }
+}
