@@ -188,7 +188,7 @@ export const Dashboard = () => {
         <ExperimentsSidebar
           experiments={experiments}
           selectedExperiment={selectedExperiment}
-          onSelectExperiment={setSelectedExperiment}
+          onSelectExperiment={(experiment: Experiment) => setSelectedExperiment(experiment)}
         />
 
         <div className="flex-1 overflow-y-auto p-6">

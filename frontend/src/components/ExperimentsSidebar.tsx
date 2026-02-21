@@ -1,3 +1,10 @@
+interface Segment {
+  id: number;
+  name: string;
+  instructions: string;
+  percentage: number;
+}
+
 interface Experiment {
   id: number;
   name: string;
@@ -5,6 +12,8 @@ interface Experiment {
   description: string;
   percentage: number;
   metrics: string;
+  segments: Segment[];
+  created_at: string;
 }
 
 interface ExperimentsSidebarProps {
