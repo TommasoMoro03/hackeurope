@@ -15,7 +15,6 @@ import { GlassPanel } from '@/components/ui/glass-panel';
 const signupSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  full_name: z.string().optional(),
   username: z.string().optional(),
 });
 
@@ -49,7 +48,6 @@ export const Signup = () => {
       {/* Nav */}
       <Navbar
         brandIcon={<Terminal className="w-4 h-4 text-white" />}
-        status={{ label: 'System Active' }}
       />
 
       {/* Main */}
@@ -79,7 +77,7 @@ export const Signup = () => {
                 <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">
                   Fields
                 </span>
-                <span className="text-sm text-slate-300">Optional name & username</span>
+                <span className="text-sm text-slate-300">Optional username</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">
@@ -99,24 +97,8 @@ export const Signup = () => {
           >
             <GlassPanel title="auth — signup" className="w-full max-w-md">
               <div className="p-6 md:p-8 space-y-6 font-mono text-sm relative">
-                {/* Terminal lines */}
-                <div className="space-y-2 text-slate-400 text-xs md:text-sm">
-                  <p className="terminal-line">create account to start</p>
-                  <p className="terminal-line">automate tests, gather data, ship winners</p>
-                  <p className="terminal-line text-emerald-400/80">sign up below</p>
-                </div>
-
-                {/* Form */}
                 <div className="bg-black/20 rounded-lg border border-white/5 p-6 flex flex-col gap-4">
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <FormInput
-                      label="Full Name (Optional)"
-                      type="text"
-                      placeholder="John Doe"
-                      error={errors.full_name?.message}
-                      className="bg-black/30 border-white/5 placeholder:text-slate-600 font-mono text-sm"
-                      {...register('full_name')}
-                    />
                     <FormInput
                       label="Username (Optional)"
                       type="text"

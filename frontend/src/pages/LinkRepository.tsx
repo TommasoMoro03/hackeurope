@@ -115,9 +115,11 @@ export const LinkRepository = () => {
                   <p className="terminal-line">linking repo for auto-PR on winners</p>
                   <p className="terminal-line text-emerald-400/80">loading your repositories...</p>
                 </div>
-                <div className="flex flex-col items-center justify-center py-12 gap-4">
-                  <div className="h-12 w-12 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  <p className="text-slate-500 text-sm">Loading repositories...</p>
+                <div className="flex flex-col items-center justify-center py-8 gap-3">
+                  <div className="h-1 w-28 rounded-full bg-white/10 overflow-hidden">
+                    <div className="h-full w-1/3 bg-primary rounded-full animate-loading-bar" />
+                  </div>
+                  <p className="text-slate-500 text-xs">Loading repositories...</p>
                 </div>
               </div>
             </GlassPanel>

@@ -46,7 +46,6 @@ export const Login = () => {
       {/* Nav */}
       <Navbar
         brandIcon={<Terminal className="w-4 h-4 text-white" />}
-        status={{ label: 'System Active' }}
       />
 
       {/* Main */}

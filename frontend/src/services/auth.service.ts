@@ -50,9 +50,27 @@ export const authService = {
   clearTokens(): void {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('user_cache');
   },
 
   getAccessToken(): string | null {
     return localStorage.getItem('access_token');
+  },
+
+  getUserCache(): User | null {
+    try {
+      const cached = sessionStorage.getItem('user_cache');
+      return cached ? (JSON.parse(cached) as User) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  setUserCache(user: User | null): void {
+    if (user) {
+      sessionStorage.setItem('user_cache', JSON.stringify(user));
+    } else {
+      sessionStorage.removeItem('user_cache');
+    }
   },
 };
