@@ -16,7 +16,8 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from src.models.base import Base
+from src.database import Base
+from src.models import user, project, experiment, event_tracked, insight_data, segment
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

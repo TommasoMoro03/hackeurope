@@ -2,10 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.config import settings
 from src.database import engine, Base
-from src.routes import auth
+from src.routes import auth, github
 
 # Import models to ensure they're registered
-from src.models import user
+from src.models import user, project
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -28,6 +28,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix="/api")
+app.include_router(github.router, prefix="/api")
 
 
 @app.get("/")

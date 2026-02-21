@@ -7,6 +7,7 @@ import { Home } from '@/pages/Home';
 import { Login } from '@/pages/Login';
 import { Signup } from '@/pages/Signup';
 import { Dashboard } from '@/pages/Dashboard';
+import { LinkRepository } from '@/pages/LinkRepository';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -25,6 +26,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/link-repository"
+              element={
+                <ProtectedRoute>
+                  <LinkRepository />
                 </ProtectedRoute>
               }
             />
