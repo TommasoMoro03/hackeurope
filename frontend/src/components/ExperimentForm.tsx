@@ -1,5 +1,7 @@
 import { Button } from '@/components/Button';
 import { useState } from 'react';
+import { GlassPanel } from '@/components/ui/glass-panel';
+import { cn } from '@/lib/utils';
 
 interface Segment {
   name: string;
@@ -19,6 +21,9 @@ interface ExperimentFormData {
 interface ExperimentFormProps {
   onSubmit: (data: ExperimentFormData) => void;
 }
+
+const inputStyles = 'w-full px-4 py-2.5 rounded-lg border border-white/10 bg-black/30 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all font-mono text-sm';
+const labelStyles = 'block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2';
 
 export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
   const [form, setForm] = useState<ExperimentFormData>({
@@ -55,7 +60,7 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
   const validatePercentages = (segments: Segment[]) => {
     const total = segments.reduce((sum, seg) => sum + seg.percentage, 0);
     if (Math.abs(total - 1) > 0.001) {
-      setPercentageError(`Total percentage must equal 100% (1.0). Current total: ${(total * 100).toFixed(1)}%`);
+      setPercentageError(`Total must equal 100% (1.0). Current: ${(total * 100).toFixed(1)}%`);
       return false;
     } else {
       setPercentageError(null);
@@ -65,132 +70,131 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validatePercentages(form.segments)) {
-      return;
-    }
+    if (!validatePercentages(form.segments)) return;
     onSubmit(form);
   };
 
   return (
     <div className="max-w-3xl">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Create New Experiment</h2>
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
+      <h2 className="text-xl font-serif font-bold text-white mb-6">Create New Experiment</h2>
+      <GlassPanel title="experiment — create" className="overflow-visible">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label className={labelStyles}>Name</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className={inputStyles}
+              required
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
+          <div>
+            <label className={labelStyles}>Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={3}
+              className={cn(inputStyles, 'resize-none')}
+              required
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Percentage of Users Involved</label>
-          <input
-            type="number"
-            min="1"
-            max="100"
-            value={form.percentage}
-            onChange={(e) => setForm({ ...form, percentage: parseInt(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Number of Segments</label>
-          <input
-            type="number"
-            min="2"
-            max="10"
-            value={form.numSegments}
-            onChange={(e) => handleNumSegmentsChange(parseInt(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Metrics</label>
-          <textarea
-            value={form.metrics}
-            onChange={(e) => setForm({ ...form, metrics: e.target.value })}
-            rows={3}
-            placeholder="Define metrics to track..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Segments</h3>
-          {percentageError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {percentageError}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelStyles}>User coverage (%)</label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={form.percentage}
+                onChange={(e) => setForm({ ...form, percentage: parseInt(e.target.value) })}
+                className={inputStyles}
+                required
+              />
             </div>
-          )}
-          {form.segments.map((segment, index) => (
-            <div key={index} className="p-4 border border-gray-200 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-3">Segment {index + 1}</h4>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={segment.name}
-                    onChange={(e) => handleSegmentChange(index, 'name', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Percentage (0.0 to 1.0)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="1"
-                    value={segment.percentage}
-                    onChange={(e) => handleSegmentChange(index, 'percentage', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    {(segment.percentage * 100).toFixed(1)}% of users
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Instructions</label>
-                  <textarea
-                    value={segment.instructions}
-                    onChange={(e) => handleSegmentChange(index, 'instructions', e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+            <div>
+              <label className={labelStyles}>Segments</label>
+              <input
+                type="number"
+                min="2"
+                max="10"
+                value={form.numSegments}
+                onChange={(e) => handleNumSegmentsChange(parseInt(e.target.value))}
+                className={inputStyles}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelStyles}>Metrics</label>
+            <textarea
+              value={form.metrics}
+              onChange={(e) => setForm({ ...form, metrics: e.target.value })}
+              rows={3}
+              placeholder="Define metrics to track..."
+              className={cn(inputStyles, 'resize-none')}
+              required
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-mono uppercase tracking-widest text-slate-400">Segments</h3>
+            {percentageError && (
+              <div className="glass-panel-vibe border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-sm">
+                {percentageError}
+              </div>
+            )}
+            {form.segments.map((segment, index) => (
+              <div key={index} className="p-4 rounded-lg border border-white/5 bg-black/20 space-y-3">
+                <h4 className="font-medium text-slate-300 font-mono text-sm">Segment {index + 1}</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className={labelStyles}>Name</label>
+                    <input
+                      type="text"
+                      value={segment.name}
+                      onChange={(e) => handleSegmentChange(index, 'name', e.target.value)}
+                      className={inputStyles}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className={labelStyles}>Percentage (0.0–1.0)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="1"
+                      value={segment.percentage}
+                      onChange={(e) => handleSegmentChange(index, 'percentage', parseFloat(e.target.value) || 0)}
+                      className={inputStyles}
+                      required
+                    />
+                    <p className="text-xs text-slate-500 mt-1">{(segment.percentage * 100).toFixed(1)}% of users</p>
+                  </div>
+                  <div>
+                    <label className={labelStyles}>Instructions</label>
+                    <textarea
+                      value={segment.instructions}
+                      onChange={(e) => handleSegmentChange(index, 'instructions', e.target.value)}
+                      rows={3}
+                      className={cn(inputStyles, 'resize-none')}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <Button type="submit">Create Experiment</Button>
-      </form>
+          <Button type="submit" className="glow-button w-full sm:w-auto">
+            Create Experiment
+          </Button>
+        </form>
+      </GlassPanel>
     </div>
   );
 };

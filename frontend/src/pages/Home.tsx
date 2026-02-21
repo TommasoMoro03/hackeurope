@@ -156,9 +156,12 @@ export const Home = () => {
                           </div>
                           <span className="text-[9px] text-emerald-400 font-mono">+14.2% Conv.</span>
                         </div>
-                        <div className="h-7 w-full bg-primary text-white text-[9px] font-bold flex items-center justify-center rounded shadow-lg shadow-primary/20">
+                        <Link
+                          to="/signup"
+                          className="h-8 w-full bg-primary hover:bg-primary-glow text-white text-[9px] font-bold flex items-center justify-center rounded shadow-lg shadow-primary/20 transition-colors hover:shadow-primary/40 active:scale-[0.98] cursor-pointer"
+                        >
                           Start Now
-                        </div>
+                        </Link>
                       </div>
                     </div>
                   </div>

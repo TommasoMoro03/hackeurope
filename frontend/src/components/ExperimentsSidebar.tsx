@@ -1,3 +1,6 @@
+import { cn } from '@/lib/utils';
+import { FlaskConical } from 'lucide-react';
+
 interface Segment {
   id: number;
   name: string;
@@ -24,26 +27,32 @@ interface ExperimentsSidebarProps {
 
 export const ExperimentsSidebar = ({ experiments, selectedExperiment, onSelectExperiment }: ExperimentsSidebarProps) => {
   return (
-    <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+    <div className="w-56 md:w-64 shrink-0 border-r border-white/5 bg-black/20 overflow-y-auto">
       <div className="p-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Experiments</h2>
+        <h2 className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-slate-500 mb-4">
+          <FlaskConical className="w-4 h-4" />
+          Experiments
+        </h2>
         {experiments.length === 0 ? (
-          <p className="text-sm text-gray-500">No experiments yet</p>
+          <p className="text-sm text-slate-600">No experiments yet</p>
         ) : (
           <div className="space-y-2">
             {experiments.map((exp) => (
-              <div
+              <button
                 key={exp.id}
                 onClick={() => onSelectExperiment(exp)}
-                className={`p-3 rounded cursor-pointer transition-colors ${
+                className={cn(
+                  'w-full text-left p-3 rounded-lg border transition-all duration-200',
                   selectedExperiment?.id === exp.id
-                    ? 'bg-blue-50 border border-blue-200'
-                    : 'hover:bg-gray-50'
-                }`}
+                    ? 'border-primary/50 bg-primary/10 text-white'
+                    : 'border-white/5 bg-white/5 hover:border-white/10 hover:bg-white/[0.07] text-slate-300 hover:text-white'
+                )}
               >
-                <div className="font-medium text-gray-900">{exp.name}</div>
-                <div className="text-xs text-gray-500">{exp.status}</div>
-              </div>
+                <div className="font-medium text-sm truncate">{exp.name}</div>
+                <div className="text-[10px] font-mono uppercase tracking-wider mt-1 opacity-70">
+                  {exp.status}
+                </div>
+              </button>
             ))}
           </div>
         )}

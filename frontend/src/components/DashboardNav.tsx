@@ -1,5 +1,8 @@
-import { Button } from '@/components/Button';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Terminal, LogOut, Github } from 'lucide-react';
 import { RepoInfoPopup } from '@/components/RepoInfoPopup';
+import { cn } from '@/lib/utils';
 
 interface Project {
   id: number;
@@ -36,45 +39,58 @@ export const DashboardNav = ({
   onSwitchRepository,
 }: DashboardNavProps) => {
   return (
-    <nav className="bg-white shadow">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center gap-6">
-            <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-            <div className="relative">
-              <button
-                onClick={onTogglePopup}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-                </svg>
-                <span className="font-medium text-gray-700">{project.name}</span>
-                <span className="flex items-center gap-1 text-sm text-gray-500">
-                  ⭐ {project.stars_count}
-                </span>
-                {project.is_private ? (
-                  <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">Private</span>
-                ) : (
-                  <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Public</span>
-                )}
-              </button>
-              {showRepoPopup && (
-                <RepoInfoPopup
-                project={project}
-                onClose={onTogglePopup}
-                onDisconnect={onDisconnect}
-                onSwitchRepository={onSwitchRepository}
-              />
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-700">{user?.username || user?.email}</span>
-            <Button onClick={onLogout} variant="outline">Logout</Button>
-          </div>
+    <motion.nav
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="relative z-50 flex items-center justify-between px-4 md:px-6 py-2.5 w-full border-b border-white/5 bg-background-dark/60 backdrop-blur-md"
+    >
+      <Link to="/" className="flex items-center gap-2 group shrink-0">
+        <div className="size-6 bg-white/5 rounded border border-white/10 flex items-center justify-center group-hover:border-primary/30 transition-colors overflow-hidden">
+          <Terminal className="w-3 h-3 text-white" />
         </div>
+        <span className="font-display font-bold text-sm tracking-tight text-white hidden sm:inline">Dashboard</span>
+      </Link>
+
+      <div className="flex items-center gap-4">
+        <div className="relative">
+          <button
+            onClick={onTogglePopup}
+            className={cn(
+              'flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors text-[10px] font-mono uppercase tracking-wider',
+              'border-white/10 bg-white/5 hover:border-primary/30 hover:bg-primary/10 text-slate-300 hover:text-white'
+            )}
+          >
+            <Github className="w-4 h-4" />
+            <span>{project.name}</span>
+            <span className="text-slate-500">⭐ {project.stars_count}</span>
+            {project.is_private ? (
+              <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[9px]">Private</span>
+            ) : (
+              <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[9px]">Public</span>
+            )}
+          </button>
+          {showRepoPopup && (
+            <RepoInfoPopup
+              project={project}
+              onClose={onTogglePopup}
+              onDisconnect={onDisconnect}
+              onSwitchRepository={onSwitchRepository}
+            />
+          )}
+        </div>
+
+        <span className="text-[10px] text-slate-500 font-mono truncate max-w-[120px] md:max-w-none">
+          {user?.username || user?.email}
+        </span>
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 hover:border-red-500/50 hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors text-[10px] font-mono uppercase"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          Logout
+        </button>
       </div>
-    </nav>
+    </motion.nav>
   );
 };

@@ -4,11 +4,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/axios';
+import { AppBackground } from '@/components/ui/app-background';
 import { DashboardNav } from '@/components/DashboardNav';
 import { ExperimentsSidebar } from '@/components/ExperimentsSidebar';
 import { ExperimentForm } from '@/components/ExperimentForm';
 import { ExperimentDetails } from '@/components/ExperimentDetails';
 import { ExperimentProgress } from '@/components/ExperimentProgress';
+import { ExperimentLivePreview } from '@/components/ExperimentLivePreview';
+import { FileText, Play } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Project {
   id: number;
@@ -61,6 +65,7 @@ export const Dashboard = () => {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [creatingExperiment, setCreatingExperiment] = useState<{ id: number; name: string } | null>(null);
+  const [experimentView, setExperimentView] = useState<'details' | 'live'>('details');
 
   const { data: project, isLoading: loading } = useQuery({
     queryKey: ['github-project'],
@@ -147,14 +152,16 @@ export const Dashboard = () => {
 
   if (!project && loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-1 w-32 rounded-full bg-gray-200 overflow-hidden">
-            <div className="h-full w-1/3 bg-primary rounded-full animate-loading-bar" />
+      <AppBackground>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-1 w-32 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-full w-1/3 bg-primary rounded-full animate-loading-bar" />
+            </div>
+            <p className="text-sm text-slate-500">Loading project...</p>
           </div>
-          <p className="text-sm text-gray-500">Loading project...</p>
         </div>
-      </div>
+      </AppBackground>
     );
   }
 
@@ -163,7 +170,7 @@ export const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <AppBackground className="flex flex-col">
       <DashboardNav
         user={user}
         project={project}
@@ -174,33 +181,77 @@ export const Dashboard = () => {
         onSwitchRepository={handleSwitchRepository}
       />
 
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex flex-1 min-h-0">
         <ExperimentsSidebar
           experiments={experiments}
           selectedExperiment={selectedExperiment}
           onSelectExperiment={(experiment: Experiment) => setSelectedExperiment(experiment)}
         />
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div
+          className={cn(
+            'flex-1 relative z-20 flex flex-col min-h-0',
+            selectedExperiment && experimentView === 'live' ? 'overflow-hidden p-4' : 'overflow-y-auto p-6'
+          )}
+        >
           {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="mb-4 glass-panel-vibe border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
               {error}
             </div>
           )}
 
-          {creatingExperiment ? (
+          {creatingExperiment && (
             <ExperimentProgress
               experimentId={creatingExperiment.id}
               experimentName={creatingExperiment.name}
               onComplete={handleExperimentComplete}
             />
-          ) : selectedExperiment ? (
-            <ExperimentDetails experiment={selectedExperiment} />
-          ) : (
+          )}
+          {!creatingExperiment && selectedExperiment && (
+            <div className="flex flex-col h-full min-h-0">
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setExperimentView('details')}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs uppercase tracking-wider transition-colors',
+                    experimentView === 'details'
+                      ? 'bg-primary/20 border border-primary/50 text-white'
+                      : 'border border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'
+                  )}
+                >
+                  <FileText className="w-4 h-4" />
+                  Details
+                </button>
+                <button
+                  onClick={() => setExperimentView('live')}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs uppercase tracking-wider transition-colors',
+                    experimentView === 'live'
+                      ? 'bg-primary/20 border border-primary/50 text-white'
+                      : 'border border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'
+                  )}
+                >
+                  <Play className="w-4 h-4" />
+                  Run Test
+                </button>
+              </div>
+              {experimentView === 'details' ? (
+                <ExperimentDetails experiment={selectedExperiment} />
+              ) : (
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <ExperimentLivePreview
+                    experiment={selectedExperiment}
+                    project={project}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          {!creatingExperiment && !selectedExperiment && (
             <ExperimentForm onSubmit={handleCreateExperiment} />
           )}
         </div>
       </div>
-    </div>
+    </AppBackground>
   );
 };

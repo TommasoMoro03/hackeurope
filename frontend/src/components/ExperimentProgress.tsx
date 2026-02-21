@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/axios';
+import { GlassPanel } from '@/components/ui/glass-panel';
+import { Check, X, Loader2 } from 'lucide-react';
 
 interface ExperimentProgressProps {
   experimentId: number;
@@ -26,34 +28,25 @@ export const ExperimentProgress = ({ experimentId, experimentName, onComplete }:
   useEffect(() => {
     let startTime = Date.now();
 
-    // Simulate progress steps with timeouts
     const updateSteps = () => {
       const elapsed = Date.now() - startTime;
-
-      // Step 1: Analyzing (0-2s)
       if (elapsed >= 0) {
         setSteps(prev => prev.map(step =>
           step.id === 'analyze' ? { ...step, status: 'loading' as const } : step
         ));
       }
-
-      // Step 1 complete, Step 2 starts (2-5s)
       if (elapsed >= 2000) {
         setSteps(prev => prev.map(step =>
           step.id === 'analyze' ? { ...step, status: 'completed' as const } :
           step.id === 'events' ? { ...step, status: 'loading' as const } : step
         ));
       }
-
-      // Step 2 complete, Step 3 starts (5-10s)
       if (elapsed >= 5000) {
         setSteps(prev => prev.map(step =>
           step.id === 'events' ? { ...step, status: 'completed' as const } :
           step.id === 'code' ? { ...step, status: 'loading' as const } : step
         ));
       }
-
-      // Step 3 complete, Step 4 starts (10s+)
       if (elapsed >= 10000) {
         setSteps(prev => prev.map(step =>
           step.id === 'code' ? { ...step, status: 'completed' as const } :
@@ -62,24 +55,22 @@ export const ExperimentProgress = ({ experimentId, experimentName, onComplete }:
       }
     };
 
-    // Update steps every 500ms
     const stepInterval = setInterval(updateSteps, 500);
 
-    // Poll the actual status every 2 seconds
+    let interval: ReturnType<typeof setInterval>;
     const pollStatus = async () => {
       try {
         const response = await api.get(`/api/experiments/${experimentId}/status`);
         const newStatus = response.data.status;
         setStatus(newStatus);
 
-        // If status is active or failed, complete all steps and stop polling
         if (newStatus === 'active' || newStatus === 'failed') {
           if (newStatus === 'active') {
             setSteps(prev => prev.map(step => ({ ...step, status: 'completed' as const })));
           }
           clearInterval(interval);
           clearInterval(stepInterval);
-          setTimeout(() => onComplete(), 1000); // Small delay to show completion
+          setTimeout(() => onComplete(), 1000);
         }
       } catch (err: any) {
         setError('Failed to fetch experiment status');
@@ -87,13 +78,9 @@ export const ExperimentProgress = ({ experimentId, experimentName, onComplete }:
       }
     };
 
-    // Initial poll
     pollStatus();
+    interval = setInterval(pollStatus, 2000);
 
-    // Set up polling interval
-    const interval = setInterval(pollStatus, 2000); // Poll every 2 seconds
-
-    // Cleanup on unmount
     return () => {
       clearInterval(interval);
       clearInterval(stepInterval);
@@ -102,35 +89,22 @@ export const ExperimentProgress = ({ experimentId, experimentName, onComplete }:
 
   const renderStepIcon = (stepStatus: 'pending' | 'loading' | 'completed') => {
     if (stepStatus === 'completed') {
-      return (
-        <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-      );
+      return <Check className="w-5 h-5 text-emerald-400" />;
     }
-
     if (stepStatus === 'loading') {
-      return (
-        <svg className="animate-spin w-6 h-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-      );
+      return <Loader2 className="w-5 h-5 text-primary-glow animate-spin" />;
     }
-
-    return (
-      <div className="w-6 h-6 border-2 border-gray-300 rounded-full"></div>
-    );
+    return <div className="w-5 h-5 rounded-full border-2 border-white/20" />;
   };
 
   return (
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="max-w-2xl w-full">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="text-xl font-serif font-bold text-white mb-2">
             {status === 'active' ? 'Success!' : status === 'failed' ? 'Error' : 'Implementing Experiment'}
           </h2>
-          <p className="text-gray-600">
+          <p className="text-slate-400">
             {status === 'active'
               ? `Your experiment "${experimentName}" is now ready!`
               : status === 'failed'
@@ -139,67 +113,69 @@ export const ExperimentProgress = ({ experimentId, experimentName, onComplete }:
           </p>
         </div>
 
-        {/* Progress Steps */}
         {(status === 'started' || status === 'implementing') && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <div className="space-y-4">
+          <GlassPanel title="progress">
+            <div className="p-6 space-y-4">
               {steps.map((step) => (
                 <div key={step.id} className="flex items-start gap-4">
-                  <div className="flex-shrink-0 mt-1">
-                    {renderStepIcon(step.status)}
-                  </div>
+                  <div className="flex-shrink-0 mt-0.5">{renderStepIcon(step.status)}</div>
                   <div className="flex-1">
-                    <p className={`font-medium ${
-                      step.status === 'completed' ? 'text-green-700' :
-                      step.status === 'loading' ? 'text-blue-700' :
-                      'text-gray-500'
-                    }`}>
+                    <p
+                      className={`font-medium ${
+                        step.status === 'completed' ? 'text-emerald-400' :
+                        step.status === 'loading' ? 'text-primary-glow' :
+                        'text-slate-500'
+                      }`}
+                    >
                       {step.label}
                     </p>
                     {step.status === 'loading' && (
-                      <p className="text-sm text-gray-500 mt-1">In progress...</p>
+                      <p className="text-xs text-slate-500 mt-1">In progress...</p>
                     )}
                     {step.status === 'completed' && (
-                      <p className="text-sm text-green-600 mt-1">Completed</p>
+                      <p className="text-xs text-emerald-400/80 mt-1">Completed</p>
                     )}
                   </div>
                 </div>
               ))}
-            </div>
 
-            <div className="mt-6 text-center text-sm text-gray-500">
-              This operation may take a couple of minutes
+              <div className="mt-6 text-center text-xs text-slate-500 font-mono">
+                This operation may take a couple of minutes
+              </div>
             </div>
-          </div>
+          </GlassPanel>
         )}
 
-        {/* Final Status */}
         {status === 'active' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-            <svg className="w-16 h-16 text-green-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <h3 className="text-lg font-semibold text-green-900 mb-2">Implementation Complete!</h3>
-            <p className="text-green-700">
-              A pull request has been created in your repository. Review and merge it to activate the experiment.
-            </p>
-          </div>
+          <GlassPanel title="complete">
+            <div className="p-8 text-center">
+              <div className="size-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+                <Check className="w-8 h-8 text-emerald-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">Implementation Complete!</h3>
+              <p className="text-slate-400 text-sm">
+                A pull request has been created in your repository. Review and merge it to activate the experiment.
+              </p>
+            </div>
+          </GlassPanel>
         )}
 
         {status === 'failed' && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <h3 className="text-lg font-semibold text-red-900 mb-2">Implementation Failed</h3>
-            <p className="text-red-700">
-              There was an error implementing your experiment. Please try again or contact support.
-            </p>
-          </div>
+          <GlassPanel title="error">
+            <div className="p-8 text-center">
+              <div className="size-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <X className="w-8 h-8 text-red-400" /> 
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">Implementation Failed</h3>
+              <p className="text-slate-400 text-sm">
+                There was an error implementing your experiment. Please try again or contact support.
+              </p>
+            </div>
+          </GlassPanel>
         )}
 
         {error && (
-          <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <div className="mt-4 glass-panel-vibe border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
