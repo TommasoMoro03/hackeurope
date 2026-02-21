@@ -14,13 +14,8 @@ class Segment(Base):
     experiment_id = Column(Integer, ForeignKey("experiment.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Segment info
-    code = Column(String, nullable=False)  # e.g. "control", "variant_1"
-    percentage = Column(Float, nullable=False)  # allocation percentage
-    title = Column(String, nullable=True)
-    description = Column(String, nullable=True)
+    name = Column(String, nullable=False)
+    instructions = Column(String, nullable=True)
 
     # Timestamp
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Relationship
-    experiment = relationship("Experiment", backref="segments")

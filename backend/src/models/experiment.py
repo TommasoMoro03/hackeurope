@@ -14,15 +14,18 @@ class Experiment(Base):
     project_id = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Experiment info
-    title = Column(String, nullable=False)
+    name = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="active")  # active, paused, completed
 
     # Traffic allocation
-    user_percentage = Column(Float, nullable=False)  # % of users entering the experiment
-    number_of_segments = Column(Integer, nullable=False)
+    percentage = Column(Float, nullable=False)  # % of users entering the experiment
 
-    # Metrics tracked (comma separated or JSON string depending on your design)
+    # Metrics tracked
     metrics = Column(String, nullable=True)
+
+    # Winning segment id, can be null of course (at the beginning)
+    winning_segment_id = Column(Integer, ForeignKey("segment.id", ondelete="CASCADE"))
 
     # Timestamp
     created_at = Column(DateTime(timezone=True), server_default=func.now())
