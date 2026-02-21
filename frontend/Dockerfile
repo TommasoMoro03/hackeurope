@@ -14,6 +14,9 @@ RUN npm install
 # Copy source code
 COPY . .
 
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+
 # Build the app
 RUN npm run build
 
