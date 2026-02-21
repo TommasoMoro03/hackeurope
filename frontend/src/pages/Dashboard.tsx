@@ -4,14 +4,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/axios';
+import { projectCache } from '@/services/projectCache.service';
 import { AppBackground } from '@/components/ui/app-background';
 import { DashboardNav } from '@/components/DashboardNav';
-import { ExperimentsSidebar } from '@/components/ExperimentsSidebar';
 import { ExperimentForm } from '@/components/ExperimentForm';
 import { ExperimentDetails } from '@/components/ExperimentDetails';
 import { ExperimentProgress } from '@/components/ExperimentProgress';
 import { ExperimentLivePreview } from '@/components/ExperimentLivePreview';
-import { FileText, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Project {
@@ -70,9 +69,20 @@ export const Dashboard = () => {
   const { data: project, isLoading: loading } = useQuery({
     queryKey: ['github-project'],
     queryFn: async () => {
-      const res = await api.get('/api/github/project');
-      return res.data as Project;
+      try {
+        const res = await api.get('/api/github/project');
+        const data = res.data as Project;
+        projectCache.set(data);
+        return data;
+      } catch (err: any) {
+        if (err?.response?.status === 404) {
+          projectCache.clear();
+          return null;
+        }
+        throw err;
+      }
     },
+    initialData: projectCache.get() ?? undefined,
     retry: (failureCount, error: any) =>
       failureCount < 1 && error?.response?.status === 404 ? false : failureCount < 3,
   });
@@ -99,6 +109,7 @@ export const Dashboard = () => {
   const handleDisconnect = async () => {
     try {
       await api.delete('/api/github/project');
+      projectCache.clear();
       queryClient.setQueryData(['github-project'], null);
       setError(null);
       toast.success('Repository disconnected');
@@ -111,6 +122,7 @@ export const Dashboard = () => {
   const handleSwitchRepository = async () => {
     try {
       await api.delete('/api/github/project');
+      projectCache.clear();
       queryClient.setQueryData(['github-project'], null);
       setError(null);
       toast.success('Select a new repository');
@@ -136,17 +148,14 @@ export const Dashboard = () => {
     }
   };
 
-  const handleExperimentComplete = async () => {
-    // Refresh experiments list
+  const handleExperimentComplete = async (createdId?: number) => {
+    const idToSelect = createdId ?? creatingExperiment?.id;
     await fetchExperiments();
-    // Clear the creating state
     setCreatingExperiment(null);
-    // Optionally select the newly created experiment
-    if (creatingExperiment) {
-      const newExperiment = experiments.find(exp => exp.id === creatingExperiment.id);
-      if (newExperiment) {
-        setSelectedExperiment(newExperiment);
-      }
+    if (idToSelect) {
+      const updated = await api.get('/api/experiments').then((r) => r.data as Experiment[]);
+      const newExp = updated.find((e) => e.id === idToSelect);
+      if (newExp) setSelectedExperiment(newExp);
     }
   };
 
@@ -174,7 +183,12 @@ export const Dashboard = () => {
       <DashboardNav
         user={user}
         project={project}
+        experiments={experiments}
+        selectedExperiment={selectedExperiment}
+        experimentView={experimentView}
         showRepoPopup={showRepoPopup}
+        onSelectExperiment={setSelectedExperiment}
+        onExperimentViewChange={setExperimentView}
         onTogglePopup={() => setShowRepoPopup(!showRepoPopup)}
         onLogout={logout}
         onDisconnect={handleDisconnect}
@@ -182,12 +196,6 @@ export const Dashboard = () => {
       />
 
       <div className="flex flex-1 min-h-0">
-        <ExperimentsSidebar
-          experiments={experiments}
-          selectedExperiment={selectedExperiment}
-          onSelectExperiment={(experiment: Experiment) => setSelectedExperiment(experiment)}
-        />
-
         <div
           className={cn(
             'flex-1 relative z-20 flex flex-col min-h-0',
@@ -209,32 +217,6 @@ export const Dashboard = () => {
           )}
           {!creatingExperiment && selectedExperiment && (
             <div className="flex flex-col h-full min-h-0">
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => setExperimentView('details')}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs uppercase tracking-wider transition-colors',
-                    experimentView === 'details'
-                      ? 'bg-primary/20 border border-primary/50 text-white'
-                      : 'border border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'
-                  )}
-                >
-                  <FileText className="w-4 h-4" />
-                  Details
-                </button>
-                <button
-                  onClick={() => setExperimentView('live')}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs uppercase tracking-wider transition-colors',
-                    experimentView === 'live'
-                      ? 'bg-primary/20 border border-primary/50 text-white'
-                      : 'border border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'
-                  )}
-                >
-                  <Play className="w-4 h-4" />
-                  Run Test
-                </button>
-              </div>
               {experimentView === 'details' ? (
                 <ExperimentDetails experiment={selectedExperiment} />
               ) : (

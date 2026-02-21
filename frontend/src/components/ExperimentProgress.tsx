@@ -6,7 +6,7 @@ import { Check, X, Loader2 } from 'lucide-react';
 interface ExperimentProgressProps {
   experimentId: number;
   experimentName: string;
-  onComplete: () => void;
+  onComplete: (experimentId?: number) => void;
 }
 
 interface ProgressStep {
@@ -70,7 +70,7 @@ export const ExperimentProgress = ({ experimentId, experimentName, onComplete }:
           }
           clearInterval(interval);
           clearInterval(stepInterval);
-          setTimeout(() => onComplete(), 1000);
+          setTimeout(() => onComplete(experimentId), 1000);
         }
       } catch (err: any) {
         setError('Failed to fetch experiment status');

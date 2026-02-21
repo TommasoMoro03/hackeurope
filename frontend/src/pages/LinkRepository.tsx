@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Github, Terminal, Lock, Star, GitFork, ArrowLeft } from 'lucide-react';
 import { Navbar } from '@/components/ui/navbar';
 import { api } from '@/lib/axios';
+import { projectCache } from '@/services/projectCache.service';
 import { AppBackground } from '@/components/ui/app-background';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { Card } from '@/components/ui/card-hover-effect';
@@ -67,11 +68,12 @@ export const LinkRepository = () => {
         return;
       }
 
-      await api.post('/api/github/project/link', {
+      const { data: linkedProject } = await api.post('/api/github/project/link', {
         repo_id: repo.id,
         access_token: accessToken
       });
 
+      projectCache.set(linkedProject);
       sessionStorage.removeItem('github_access_token');
       navigate('/dashboard');
     } catch (err: any) {

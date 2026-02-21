@@ -1,4 +1,5 @@
 import { api } from '@/lib/axios';
+import { projectCache } from './projectCache.service';
 import type {
   LoginCredentials,
   SignupCredentials,
@@ -51,6 +52,7 @@ export const authService = {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     sessionStorage.removeItem('user_cache');
+    projectCache.clear();
   },
 
   getAccessToken(): string | null {
