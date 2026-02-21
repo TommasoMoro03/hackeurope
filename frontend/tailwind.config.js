@@ -33,10 +33,22 @@ export default {
           from: { backgroundPosition: "200% 0" },
           to: { backgroundPosition: "-200% 0" },
         },
+        "loading-bar": {
+          "0%": { transform: "translateX(-100%)" },
+          "50%": { transform: "translateX(100%)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
+        "code-typing": {
+          "0%": { width: "0" },
+          "80%": { width: "100%" },
+          "100%": { width: "100%" },
+        },
       },
       animation: {
         blob: "blob 7s infinite",
         gradient: "gradient 3s ease infinite",
+        "loading-bar": "loading-bar 1.5s ease-in-out infinite",
+        "code-typing": "code-typing 3s steps(30, end) infinite",
       },
     },
   },

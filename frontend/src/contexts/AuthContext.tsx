@@ -21,19 +21,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Load user on mount
+  // Load user on mount - optimistic: use cache if available for instant load
   useEffect(() => {
     const loadUser = async () => {
       const token = authService.getAccessToken();
-      if (token) {
-        try {
-          const userData = await authService.getCurrentUser();
-          setUser(userData);
-        } catch (error) {
-          authService.clearTokens();
-        }
+      if (!token) {
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
+      const cached = authService.getUserCache();
+      if (cached) {
+        setUser(cached);
+        setIsLoading(false);
+      }
+      try {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+        authService.setUserCache(userData);
+      } catch {
+        authService.clearTokens();
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadUser();
@@ -46,6 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const userData = await authService.getCurrentUser();
       setUser(userData);
+      authService.setUserCache(userData);
 
       toast.success('Login successful!');
       navigate('/dashboard');
@@ -63,6 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const userData = await authService.getCurrentUser();
       setUser(userData);
+      authService.setUserCache(userData);
 
       toast.success('Account created successfully!');
       navigate('/dashboard');
@@ -80,6 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const userData = await authService.getCurrentUser();
       setUser(userData);
+      authService.setUserCache(userData);
 
       toast.success('Google login successful!');
       navigate('/dashboard');

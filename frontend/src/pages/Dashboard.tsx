@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/axios';
@@ -53,18 +54,26 @@ interface ExperimentFormData {
 
 export const Dashboard = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, logout } = useAuth();
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRepoPopup, setShowRepoPopup] = useState(false);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [creatingExperiment, setCreatingExperiment] = useState<{ id: number; name: string } | null>(null);
 
+  const { data: project, isLoading: loading } = useQuery({
+    queryKey: ['github-project'],
+    queryFn: async () => {
+      const res = await api.get('/api/github/project');
+      return res.data as Project;
+    },
+    retry: (failureCount, error: any) =>
+      failureCount < 1 && error?.response?.status === 404 ? false : failureCount < 3,
+  });
+
   useEffect(() => {
-    fetchProject();
-    fetchExperiments();
+    api.get('/api/experiments').then((r) => setExperiments(r.data)).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -72,24 +81,6 @@ export const Dashboard = () => {
       navigate('/connect-github', { replace: true });
     }
   }, [loading, project, navigate]);
-
-  const fetchProject = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/api/github/project');
-      setProject(response.data);
-      setError(null);
-    } catch (err: any) {
-      if (err.response?.status === 404) {
-        setProject(null);
-        setError(null);
-      } else {
-        setError('Failed to load project');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchExperiments = async () => {
     try {
@@ -103,7 +94,7 @@ export const Dashboard = () => {
   const handleDisconnect = async () => {
     try {
       await api.delete('/api/github/project');
-      setProject(null);
+      queryClient.setQueryData(['github-project'], null);
       setError(null);
       toast.success('Repository disconnected');
     } catch (err) {
@@ -115,7 +106,7 @@ export const Dashboard = () => {
   const handleSwitchRepository = async () => {
     try {
       await api.delete('/api/github/project');
-      setProject(null);
+      queryClient.setQueryData(['github-project'], null);
       setError(null);
       toast.success('Select a new repository');
       navigate('/connect-github', { replace: true });
@@ -154,10 +145,15 @@ export const Dashboard = () => {
     }
   };
 
-  if (loading) {
+  if (!project && loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-1 w-32 rounded-full bg-gray-200 overflow-hidden">
+            <div className="h-full w-1/3 bg-primary rounded-full animate-loading-bar" />
+          </div>
+          <p className="text-sm text-gray-500">Loading project...</p>
+        </div>
       </div>
     );
   }

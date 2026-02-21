@@ -15,7 +15,7 @@ export const AppBackground = ({
   return (
     <div
       className={cn(
-        "relative bg-background-dark text-slate-300 min-h-screen overflow-hidden flex flex-col",
+        "relative bg-background-dark text-slate-300 min-h-screen h-dvh md:h-screen overflow-x-hidden flex flex-col",
         className
       )}
     >
