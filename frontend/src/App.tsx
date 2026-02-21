@@ -9,7 +9,7 @@ import { Signup } from '@/pages/Signup';
 import { Dashboard } from '@/pages/Dashboard';
 import { LinkRepository } from '@/pages/LinkRepository';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 function App() {
   return (
