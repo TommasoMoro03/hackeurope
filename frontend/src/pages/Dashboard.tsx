@@ -8,9 +8,12 @@ import { projectCache } from '@/services/projectCache.service';
 import { AppBackground } from '@/components/ui/app-background';
 import { DashboardNav } from '@/components/DashboardNav';
 import { ExperimentForm } from '@/components/ExperimentForm';
-import { ExperimentDetails } from '@/components/ExperimentDetails';
+import { ExperimentTabs } from '@/components/ExperimentTabs';
 import { ExperimentProgress } from '@/components/ExperimentProgress';
+import { ExperimentDetails } from '@/components/ExperimentDetails';
 import { ExperimentLivePreview } from '@/components/ExperimentLivePreview';
+import { ExperimentFinishing } from '@/components/ExperimentFinishing';
+import { ExperimentMergePR } from '@/components/ExperimentMergePR';
 import { cn } from '@/lib/utils';
 
 interface Project {
@@ -42,6 +45,7 @@ interface Experiment {
   status: string;
   percentage: number;
   metrics: string;
+  preview_url?: string;
   segments: Segment[];
   created_at: string;
 }
@@ -52,6 +56,7 @@ interface ExperimentFormData {
   percentage: number;
   numSegments: number;
   metrics: string;
+  preview_url: string;
   segments: { name: string; instructions: string; percentage: number }[];
 }
 
@@ -65,6 +70,7 @@ export const Dashboard = () => {
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [creatingExperiment, setCreatingExperiment] = useState<{ id: number; name: string } | null>(null);
   const [experimentView, setExperimentView] = useState<'details' | 'live'>('details');
+  const [finishingExperiment, setFinishingExperiment] = useState<{ id: number; name: string } | null>(null);
 
   const { data: project, isLoading: loading } = useQuery({
     queryKey: ['github-project'],
@@ -136,7 +142,6 @@ export const Dashboard = () => {
   const handleCreateExperiment = async (formData: ExperimentFormData) => {
     try {
       const response = await api.post('/api/experiments', formData);
-      // Set the creating experiment state to show progress
       setCreatingExperiment({
         id: response.data.id,
         name: response.data.name
@@ -156,6 +161,62 @@ export const Dashboard = () => {
       const updated = await api.get('/api/experiments').then((r) => r.data as Experiment[]);
       const newExp = updated.find((e) => e.id === idToSelect);
       if (newExp) setSelectedExperiment(newExp);
+    }
+  };
+
+  const handleFinishExperiment = async () => {
+    if (!selectedExperiment) return;
+
+    try {
+      await api.post(`/api/experiments/${selectedExperiment.id}/finish`);
+      setFinishingExperiment({
+        id: selectedExperiment.id,
+        name: selectedExperiment.name
+      });
+      setError(null);
+    } catch (err: any) {
+      setError('Failed to finish experiment');
+      console.error('Error finishing experiment:', err);
+    }
+  };
+
+  const handleFinishingComplete = async () => {
+    const experimentId = finishingExperiment?.id;
+    setFinishingExperiment(null);
+    const response = await api.get('/api/experiments');
+    setExperiments(response.data);
+    if (experimentId) {
+      const updatedExperiment = response.data.find((exp: Experiment) => exp.id === experimentId);
+      if (updatedExperiment) {
+        setSelectedExperiment(updatedExperiment);
+      }
+    }
+  };
+
+  const handleExperimentUpdate = (updates: Partial<Experiment>) => {
+    if (!selectedExperiment) return;
+    const updated = { ...selectedExperiment, ...updates };
+    setSelectedExperiment(updated);
+    setExperiments((prev) =>
+      prev.map((e) => (e.id === selectedExperiment.id ? { ...e, ...updates } : e))
+    );
+  };
+
+  const handlePRMerged = async () => {
+    if (!selectedExperiment) return;
+
+    try {
+      await api.post(`/api/experiments/${selectedExperiment.id}/activate`);
+      const response = await api.get('/api/experiments');
+      setExperiments(response.data);
+      const updatedExperiment = response.data.find((exp: Experiment) => exp.id === selectedExperiment.id);
+      if (updatedExperiment) {
+        setSelectedExperiment(updatedExperiment);
+      }
+      setError(null);
+    } catch (err: any) {
+      setError('Failed to activate experiment');
+      console.error('Error activating experiment:', err);
     }
   };
 
@@ -216,18 +277,43 @@ export const Dashboard = () => {
             />
           )}
           {!creatingExperiment && selectedExperiment && (
-            <div className="flex flex-col h-full min-h-0">
-              {experimentView === 'details' ? (
-                <ExperimentDetails experiment={selectedExperiment} />
-              ) : (
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <ExperimentLivePreview
-                    experiment={selectedExperiment}
-                    project={project}
+            (selectedExperiment.status === 'active' || selectedExperiment.status === 'finishing' || selectedExperiment.status === 'finished') ? (
+              <>
+                <ExperimentTabs
+                  experiment={selectedExperiment}
+                  onFinish={handleFinishExperiment}
+                  onExperimentUpdate={handleExperimentUpdate}
+                />
+                {finishingExperiment && (
+                  <ExperimentFinishing
+                    experimentId={finishingExperiment.id}
+                    experimentName={finishingExperiment.name}
+                    onComplete={handleFinishingComplete}
                   />
-                </div>
-              )}
-            </div>
+                )}
+              </>
+            ) : selectedExperiment.status === 'started' || selectedExperiment.status === 'implementing' || selectedExperiment.status === 'pr_created' ? (
+              <ExperimentMergePR
+                experimentName={selectedExperiment.name}
+                onMerged={handlePRMerged}
+              />
+            ) : (
+              <div className="flex flex-col h-full min-h-0">
+                {experimentView === 'details' ? (
+                  <ExperimentDetails
+                    experiment={selectedExperiment}
+                    onExperimentUpdate={handleExperimentUpdate}
+                  />
+                ) : (
+                  <div className="flex-1 min-h-0 overflow-hidden">
+                    <ExperimentLivePreview
+                      experiment={selectedExperiment}
+                      project={project}
+                    />
+                  </div>
+                )}
+              </div>
+            )
           )}
           {!creatingExperiment && !selectedExperiment && (
             <ExperimentForm onSubmit={handleCreateExperiment} />

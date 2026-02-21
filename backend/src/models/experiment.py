@@ -27,6 +27,9 @@ class Experiment(Base):
     # Computation logic for metrics (JSON string with events and formula)
     computation_logic = Column(String, nullable=True)
 
+    # Preview URL for the application (e.g., https://myapp.com)
+    preview_url = Column(String, nullable=True)
+
     # Winning segment id, can be null of course (at the beginning)
     winning_segment_id = Column(Integer, ForeignKey("segment.id", ondelete="SET NULL"), nullable=True)
 

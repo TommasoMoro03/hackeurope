@@ -6,7 +6,7 @@ from src.models.user import User
 from src.models.project import Project
 from src.models.experiment import Experiment
 from src.models.segment import Segment
-from src.schemas.experiment import ExperimentCreate, ExperimentResponse
+from src.schemas.experiment import ExperimentCreate, ExperimentResponse, ExperimentPreviewUrlUpdate
 from src.services.experiment_implementation_service import implement_experiment_sync
 from typing import List
 import threading
@@ -172,4 +172,194 @@ def get_experiment_status(
         "id": experiment.id,
         "name": experiment.name,
         "status": experiment.status
+    }
+
+
+@router.get("/{experiment_id}/events")
+def get_experiment_events(
+    experiment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Get all tracked events for a specific experiment.
+    """
+    # Get user's project
+    project = db.query(Project).filter(Project.user_id == current_user.id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No project linked"
+        )
+
+    # Get experiment
+    experiment = db.query(Experiment).filter(
+        Experiment.id == experiment_id,
+        Experiment.project_id == project.id
+    ).first()
+
+    if not experiment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Experiment not found"
+        )
+
+    # Import EventTracked model
+    from src.models.event_tracked import EventTracked
+
+    # Get all events for this experiment
+    events = db.query(EventTracked).filter(
+        EventTracked.experiment_id == experiment_id
+    ).order_by(EventTracked.created_at.desc()).all()
+
+    # Format response
+    return [
+        {
+            "id": event.id,
+            "event_json": event.event_json,
+            "created_at": event.created_at.isoformat()
+        }
+        for event in events
+    ]
+
+
+@router.patch("/{experiment_id}/preview-url", response_model=ExperimentResponse)
+def update_experiment_preview_url(
+    experiment_id: int,
+    body: ExperimentPreviewUrlUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Update the project (preview) URL for an experiment.
+    """
+    project = db.query(Project).filter(Project.user_id == current_user.id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No project linked"
+        )
+
+    experiment = db.query(Experiment).filter(
+        Experiment.id == experiment_id,
+        Experiment.project_id == project.id
+    ).first()
+
+    if not experiment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Experiment not found"
+        )
+
+    experiment.preview_url = body.preview_url
+    db.commit()
+    db.refresh(experiment)
+    return experiment
+
+
+@router.post("/{experiment_id}/activate")
+def activate_experiment(
+    experiment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Activate an experiment after PR has been merged.
+    """
+    # Get user's project
+    project = db.query(Project).filter(Project.user_id == current_user.id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No project linked"
+        )
+
+    # Get experiment
+    experiment = db.query(Experiment).filter(
+        Experiment.id == experiment_id,
+        Experiment.project_id == project.id
+    ).first()
+
+    if not experiment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Experiment not found"
+        )
+
+    # Update status to active
+    experiment.status = "active"
+    db.commit()
+
+    return {
+        "id": experiment.id,
+        "name": experiment.name,
+        "status": experiment.status,
+        "message": "Experiment activated successfully"
+    }
+
+
+@router.post("/{experiment_id}/finish")
+def finish_experiment(
+    experiment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Finish an experiment and trigger analysis job.
+    This will be implemented later with actual analysis logic.
+    """
+    # Get user's project
+    project = db.query(Project).filter(Project.user_id == current_user.id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No project linked"
+        )
+
+    # Get experiment
+    experiment = db.query(Experiment).filter(
+        Experiment.id == experiment_id,
+        Experiment.project_id == project.id
+    ).first()
+
+    if not experiment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Experiment not found"
+        )
+
+    # Update status to finishing
+    experiment.status = "finishing"
+    db.commit()
+
+    # TODO: Launch background job to:
+    # 1. Collect all experiment data
+    # 2. Analyze results
+    # 3. Generate report
+    # 4. Update status to "finished"
+
+    # For now, simulate with a background thread
+    def finish_job():
+        import time
+        from src.database import SessionLocal
+        db_bg = SessionLocal()
+        try:
+            time.sleep(5)  # Simulate analysis work
+            exp = db_bg.query(Experiment).filter(Experiment.id == experiment_id).first()
+            if exp:
+                exp.status = "finished"
+                db_bg.commit()
+        finally:
+            db_bg.close()
+
+    import threading
+    thread = threading.Thread(target=finish_job)
+    thread.daemon = True
+    thread.start()
+
+    return {
+        "id": experiment.id,
+        "name": experiment.name,
+        "status": experiment.status,
+        "message": "Experiment finishing process started"
     }

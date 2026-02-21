@@ -27,10 +27,15 @@ class ExperimentBase(BaseModel):
     description: str
     percentage: float
     metrics: str
+    preview_url: Optional[str] = None
 
 
 class ExperimentCreate(ExperimentBase):
     segments: List[SegmentCreate]
+
+
+class ExperimentPreviewUrlUpdate(BaseModel):
+    preview_url: Optional[str] = None
 
 
 class ExperimentResponse(ExperimentBase):
@@ -38,6 +43,7 @@ class ExperimentResponse(ExperimentBase):
     project_id: int
     status: str
     computation_logic: Optional[str] = None
+    preview_url: Optional[str] = None
     segments: List[SegmentResponse]
     created_at: datetime
 

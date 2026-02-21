@@ -130,6 +130,7 @@ class GitHubAgentService:
         prompt = prompt.replace("{{EVENTS_JSON}}", json.dumps(events_data, indent=2))
         prompt = prompt.replace("{{EXPERIMENT_NAME}}", experiment_data['name'])
         prompt = prompt.replace("{{NUM_SEGMENTS}}", str(len(experiment_data.get('segments', []))))
+        prompt = prompt.replace("{{WEBHOOK_URL}}", "http://localhost:9000/webhook/event")
 
         # Build system prompt (simplified from apply-changes)
         system_prompt = """You are an expert repository-integrated coding assistant creating A/B test experiments.

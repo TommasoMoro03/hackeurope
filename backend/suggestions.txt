@@ -1,0 +1,14 @@
+1. **Explicit “minimal and additive” rule**
+   - “Do not remove or replace existing providers, routes, or app shell. Only add new routes and new components. If the experiment is a variant of an existing flow (e.g. sign-in), implement it by wrapping or extending that flow (e.g. the Auth page), not by changing the root App structure.”
+
+2. **Dependency rule**
+   - “Before changing a file (especially `App.tsx` or any root layout), list which components and hooks it provides (e.g. AuthProvider, routes). Do not remove any of these unless the task explicitly asks to remove that feature. If a page or layout uses a context (e.g. `useAuth()`), ensure the provider for that context remains in the component tree above that page.”
+
+3. **Verification**
+   - “After your changes, the existing app behavior must still work: existing routes must still render, and any page that uses auth (or other global context) must still be wrapped by the corresponding provider.”
+
+4. **Scope**
+   - “For an experiment that only adds a variant (e.g. a message at the beginning of sign-in), the change should be limited to: (a) new experiment-specific components/pages, and (b) the minimal routing or entry-point change (e.g. one new route or a small change in the Auth page). Do not rewrite the root App or remove auth, backend status, or protected routes.”
+
+5. **Optional: checklist in the prompt**
+   - “Before submitting: [ ] No existing providers removed from App (or root). [ ] No existing routes removed. [ ] Any page that uses `useAuth` (or similar) is still under the relevant provider. [ ] New experiment routes/components are additive only.”

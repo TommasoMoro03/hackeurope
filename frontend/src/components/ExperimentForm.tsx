@@ -16,6 +16,7 @@ interface ExperimentFormData {
   percentage: number;
   numSegments: number;
   metrics: string;
+  preview_url: string;
   segments: Segment[];
 }
 
@@ -35,6 +36,7 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
     percentage: 100,
     numSegments: 2,
     metrics: '',
+    preview_url: '',
     segments: [
       { name: 'Control', instructions: '', percentage: 0.5 },
       { name: 'Variant B', instructions: '', percentage: 0.5 },
@@ -114,7 +116,7 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-mono text-slate-400 uppercase">Metrics to Track</label>
+                <label className={labelStyles}>Metrics to Track</label>
                 <textarea
                   value={form.metrics}
                   onChange={(e) => setForm({ ...form, metrics: e.target.value })}
@@ -122,6 +124,22 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
                   placeholder="click_through_rate, signup_click"
                   className={cn(inputStyles, 'resize-none')}
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className={labelStyles}>
+                  Preview URL <span className="text-slate-600 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="url"
+                  value={form.preview_url}
+                  onChange={(e) => setForm({ ...form, preview_url: e.target.value })}
+                  placeholder="https://your-app.com"
+                  className={inputStyles}
+                />
+                <p className="text-[10px] text-slate-500">
+                  URL of your deployed application for live preview (e.g., https://myapp.vercel.app)
+                </p>
               </div>
             </div>
             <div className="p-3 border-t border-white/5 shrink-0">

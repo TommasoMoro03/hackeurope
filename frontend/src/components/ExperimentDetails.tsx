@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/axios';
 
 interface Segment {
   id: number;
@@ -15,19 +17,113 @@ interface Experiment {
   status: string;
   percentage: number;
   metrics: string;
+  preview_url?: string;
   segments: Segment[];
   created_at: string;
 }
 
 interface ExperimentDetailsProps {
   experiment: Experiment;
+  onExperimentUpdate?: (updates: Partial<Experiment>) => void;
 }
 
-export const ExperimentDetails = ({ experiment }: ExperimentDetailsProps) => {
+export const ExperimentDetails = ({ experiment, onExperimentUpdate }: ExperimentDetailsProps) => {
+  const [showUrlPopup, setShowUrlPopup] = useState(false);
+  const [editUrl, setEditUrl] = useState(experiment.preview_url ?? '');
+  const [savingUrl, setSavingUrl] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEditUrl(experiment.preview_url ?? '');
+  }, [experiment.preview_url]);
+
+  const openUrlPopup = () => {
+    setEditUrl(experiment.preview_url ?? '');
+    setUrlError(null);
+    setShowUrlPopup(true);
+  };
+
+  const handleSavePreviewUrl = async () => {
+    setUrlError(null);
+    setSavingUrl(true);
+    try {
+      await api.patch(`/api/experiments/${experiment.id}/preview-url`, {
+        preview_url: editUrl.trim() || null,
+      });
+      onExperimentUpdate?.({ preview_url: editUrl.trim() || undefined });
+      setShowUrlPopup(false);
+    } catch (err: any) {
+      setUrlError(err.response?.data?.detail ?? 'Failed to update preview URL');
+    } finally {
+      setSavingUrl(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl space-y-6">
       <GlassPanel title={`experiment — ${experiment.name}`}>
         <div className="p-6 space-y-6">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">Preview URL</h3>
+            <span className="text-sm text-slate-400">
+              {experiment.preview_url || 'Not set'}
+            </span>
+            <button
+              type="button"
+              onClick={openUrlPopup}
+              className="p-1 text-slate-400 hover:text-slate-300 rounded"
+              title="Edit preview URL"
+              aria-label="Edit preview URL"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+          </div>
+
+          {showUrlPopup && (
+            <>
+              <div
+                className="fixed inset-0 bg-black/20 z-40"
+                onClick={() => !savingUrl && setShowUrlPopup(false)}
+                aria-hidden
+              />
+              <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm bg-zinc-900 rounded-lg shadow-lg border border-white/10 p-4">
+                <p className="text-sm font-medium text-slate-300 mb-2">Preview URL</p>
+                <input
+                  type="url"
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full rounded border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setShowUrlPopup(false);
+                  }}
+                />
+                {urlError && (
+                  <p className="mt-1 text-xs text-red-400">{urlError}</p>
+                )}
+                <div className="mt-3 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => !savingUrl && setShowUrlPopup(false)}
+                    className="px-3 py-1.5 text-sm text-slate-400 hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSavePreviewUrl}
+                    disabled={savingUrl}
+                    className="px-3 py-1.5 text-sm bg-primary text-white rounded hover:opacity-90 disabled:opacity-50"
+                  >
+                    {savingUrl ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
           <div>
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-xl font-serif font-bold text-white">{experiment.name}</h2>
