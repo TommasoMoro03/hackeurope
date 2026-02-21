@@ -6,6 +6,7 @@ from datetime import datetime
 class SegmentBase(BaseModel):
     name: str
     instructions: str
+    percentage: float
 
 
 class SegmentCreate(SegmentBase):

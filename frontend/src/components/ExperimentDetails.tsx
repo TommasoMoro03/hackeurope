@@ -2,6 +2,7 @@ interface Segment {
   id: number;
   name: string;
   instructions: string;
+  percentage: number;
 }
 
 interface Experiment {
@@ -65,7 +66,12 @@ export const ExperimentDetails = ({ experiment }: ExperimentDetailsProps) => {
           <div className="space-y-4">
             {experiment.segments.map((segment, index) => (
               <div key={segment.id} className="p-4 border border-gray-200 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2">{segment.name}</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-gray-900">{segment.name}</h4>
+                  <span className="text-sm font-medium text-blue-600">
+                    {(segment.percentage * 100).toFixed(1)}% of users
+                  </span>
+                </div>
                 <p className="text-sm text-gray-600 whitespace-pre-wrap">{segment.instructions}</p>
               </div>
             ))}

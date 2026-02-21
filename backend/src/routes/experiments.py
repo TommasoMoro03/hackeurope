@@ -29,6 +29,14 @@ def create_experiment(
             detail="No project linked. Please link a GitHub repository first."
         )
 
+    # Validate that segment percentages sum to 1
+    total_percentage = sum(segment.percentage for segment in experiment_data.segments)
+    if not (0.99 <= total_percentage <= 1.01):  # Allow small floating point error
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Segment percentages must sum to 1.0 (100%). Current sum: {total_percentage}"
+        )
+
     # Create experiment
     new_experiment = Experiment(
         project_id=project.id,
@@ -46,7 +54,8 @@ def create_experiment(
         new_segment = Segment(
             experiment_id=new_experiment.id,
             name=segment_data.name,
-            instructions=segment_data.instructions
+            instructions=segment_data.instructions,
+            percentage=segment_data.percentage
         )
         db.add(new_segment)
 

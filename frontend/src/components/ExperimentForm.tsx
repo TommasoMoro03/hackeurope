@@ -4,6 +4,7 @@ import { useState } from 'react';
 interface Segment {
   name: string;
   instructions: string;
+  percentage: number;
 }
 
 interface ExperimentFormData {
@@ -27,26 +28,46 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
     numSegments: 2,
     metrics: '',
     segments: [
-      { name: '', instructions: '' },
-      { name: '', instructions: '' },
+      { name: '', instructions: '', percentage: 0.5 },
+      { name: '', instructions: '', percentage: 0.5 },
     ],
   });
+  const [percentageError, setPercentageError] = useState<string | null>(null);
 
   const handleNumSegmentsChange = (num: number) => {
+    const equalPercentage = 1 / num;
     const newSegments = Array.from({ length: num }, (_, i) =>
-      form.segments[i] || { name: '', instructions: '' }
+      form.segments[i] || { name: '', instructions: '', percentage: equalPercentage }
     );
     setForm({ ...form, numSegments: num, segments: newSegments });
+    validatePercentages(newSegments);
   };
 
-  const handleSegmentChange = (index: number, field: 'name' | 'instructions', value: string) => {
+  const handleSegmentChange = (index: number, field: 'name' | 'instructions' | 'percentage', value: string | number) => {
     const newSegments = [...form.segments];
     newSegments[index] = { ...newSegments[index], [field]: value };
     setForm({ ...form, segments: newSegments });
+    if (field === 'percentage') {
+      validatePercentages(newSegments);
+    }
+  };
+
+  const validatePercentages = (segments: Segment[]) => {
+    const total = segments.reduce((sum, seg) => sum + seg.percentage, 0);
+    if (Math.abs(total - 1) > 0.001) {
+      setPercentageError(`Total percentage must equal 100% (1.0). Current total: ${(total * 100).toFixed(1)}%`);
+      return false;
+    } else {
+      setPercentageError(null);
+      return true;
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validatePercentages(form.segments)) {
+      return;
+    }
     onSubmit(form);
   };
 
@@ -116,6 +137,11 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">Segments</h3>
+          {percentageError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              {percentageError}
+            </div>
+          )}
           {form.segments.map((segment, index) => (
             <div key={index} className="p-4 border border-gray-200 rounded-lg">
               <h4 className="font-medium text-gray-900 mb-3">Segment {index + 1}</h4>
@@ -129,6 +155,24 @@ export const ExperimentForm = ({ onSubmit }: ExperimentFormProps) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Percentage (0.0 to 1.0)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="1"
+                    value={segment.percentage}
+                    onChange={(e) => handleSegmentChange(index, 'percentage', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(segment.percentage * 100).toFixed(1)}% of users
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Instructions</label>

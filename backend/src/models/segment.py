@@ -16,6 +16,7 @@ class Segment(Base):
     # Segment info
     name = Column(String, nullable=False)
     instructions = Column(String, nullable=True)
+    percentage = Column(Float, nullable=False)  # 0.0 to 1.0 (e.g., 0.2 = 20%)
 
     # Timestamp
     created_at = Column(DateTime(timezone=True), server_default=func.now())

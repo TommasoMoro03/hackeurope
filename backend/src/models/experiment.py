@@ -25,11 +25,12 @@ class Experiment(Base):
     metrics = Column(String, nullable=True)
 
     # Winning segment id, can be null of course (at the beginning)
-    winning_segment_id = Column(Integer, ForeignKey("segment.id", ondelete="CASCADE"))
+    winning_segment_id = Column(Integer, ForeignKey("segment.id", ondelete="SET NULL"), nullable=True)
 
     # Timestamp
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     project = relationship("Project", backref="experiments")
-    segments = relationship("Segment", backref="experiment", cascade="all, delete-orphan")
+    segments = relationship("Segment", backref="experiment", cascade="all, delete-orphan", foreign_keys="[Segment.experiment_id]")
+    winning_segment = relationship("Segment", foreign_keys=[winning_segment_id], post_update=True)

@@ -26,6 +26,7 @@ interface Segment {
   id: number;
   name: string;
   instructions: string;
+  percentage: number;
 }
 
 interface Experiment {
@@ -45,7 +46,7 @@ interface ExperimentFormData {
   percentage: number;
   numSegments: number;
   metrics: string;
-  segments: { name: string; instructions: string }[];
+  segments: { name: string; instructions: string; percentage: number }[];
 }
 
 export const Dashboard = () => {
