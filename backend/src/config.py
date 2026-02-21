@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
 
+    # Anthropic Configuration
+    ANTHROPIC_API_KEY: str = ""
+
     # CORS Settings
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
     ALLOWED_HOSTS: str = "localhost,127.0.0.1"

@@ -16,13 +16,16 @@ class Experiment(Base):
     # Experiment info
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    status = Column(String, nullable=False, default="active")  # active, paused, completed
+    status = Column(String, nullable=False, default="started")  # started, implementing, active, paused, completed, failed
 
     # Traffic allocation
     percentage = Column(Float, nullable=False)  # % of users entering the experiment
 
     # Metrics tracked
     metrics = Column(String, nullable=True)
+
+    # Computation logic for metrics (JSON string with events and formula)
+    computation_logic = Column(String, nullable=True)
 
     # Winning segment id, can be null of course (at the beginning)
     winning_segment_id = Column(Integer, ForeignKey("segment.id", ondelete="SET NULL"), nullable=True)

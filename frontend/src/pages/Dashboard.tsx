@@ -6,6 +6,7 @@ import { DashboardNav } from '@/components/DashboardNav';
 import { ExperimentsSidebar } from '@/components/ExperimentsSidebar';
 import { ExperimentForm } from '@/components/ExperimentForm';
 import { ExperimentDetails } from '@/components/ExperimentDetails';
+import { ExperimentProgress } from '@/components/ExperimentProgress';
 
 interface Project {
   id: number;
@@ -57,6 +58,7 @@ export const Dashboard = () => {
   const [showRepoPopup, setShowRepoPopup] = useState(false);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
+  const [creatingExperiment, setCreatingExperiment] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     fetchProject();
@@ -102,12 +104,29 @@ export const Dashboard = () => {
   const handleCreateExperiment = async (formData: ExperimentFormData) => {
     try {
       const response = await api.post('/api/experiments', formData);
-      setExperiments([...experiments, response.data]);
-      setSelectedExperiment(response.data);
+      // Set the creating experiment state to show progress
+      setCreatingExperiment({
+        id: response.data.id,
+        name: response.data.name
+      });
       setError(null);
     } catch (err: any) {
       setError('Failed to create experiment');
       console.error('Error creating experiment:', err);
+    }
+  };
+
+  const handleExperimentComplete = async () => {
+    // Refresh experiments list
+    await fetchExperiments();
+    // Clear the creating state
+    setCreatingExperiment(null);
+    // Optionally select the newly created experiment
+    if (creatingExperiment) {
+      const newExperiment = experiments.find(exp => exp.id === creatingExperiment.id);
+      if (newExperiment) {
+        setSelectedExperiment(newExperiment);
+      }
     }
   };
 
@@ -179,7 +198,13 @@ export const Dashboard = () => {
             </div>
           )}
 
-          {selectedExperiment ? (
+          {creatingExperiment ? (
+            <ExperimentProgress
+              experimentId={creatingExperiment.id}
+              experimentName={creatingExperiment.name}
+              onComplete={handleExperimentComplete}
+            />
+          ) : selectedExperiment ? (
             <ExperimentDetails experiment={selectedExperiment} />
           ) : (
             <ExperimentForm onSubmit={handleCreateExperiment} />

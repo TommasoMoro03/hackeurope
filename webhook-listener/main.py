@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from src.config import settings
 from src.database import get_db, engine, Base
+from src.models.event_tracked import EventTracked  # Import model to register it with Base
 import logging
 
 # Set up logging
@@ -53,43 +54,44 @@ async def receive_event_webhook(request: Request, db: Session = Depends(get_db))
 
     Expected payload:
     {
-        "event_type": "click",
-        "project_id": 123,
+        "event_id": "event_name",
+        "segment_id": 123,
+        "segment_name": "control",
         "experiment_id": 456,
+        "project_id": 789,
+        "timestamp": "2024-02-21T12:00:00Z",
         "user_id": "user-123",
-        "metadata": {...},
-        "timestamp": "2024-02-21T12:00:00Z"
+        "metadata": {...}
     }
     """
     try:
         payload = await request.json()
         logger.info(f"Received webhook event: {payload}")
 
-        # TODO: Import and use your Event model from backend
-        # For now, just log the event
-        # Example:
-        # from backend.src.models.event_tracked import EventTracked
-        # event = EventTracked(
-        #     event_type=payload.get('event_type'),
-        #     project_id=payload.get('project_id'),
-        #     experiment_id=payload.get('experiment_id'),
-        #     user_id=payload.get('user_id'),
-        #     metadata=payload.get('metadata'),
-        #     timestamp=datetime.fromisoformat(payload.get('timestamp'))
-        # )
-        # db.add(event)
-        # db.commit()
+        # Create event record
+        event = EventTracked(
+            project_id=payload.get('project_id'),
+            experiment_id=payload.get('experiment_id'),
+            segment_id=payload.get('segment_id'),
+            event_json=payload  # Store entire payload as JSONB
+        )
+        db.add(event)
+        db.commit()
+        db.refresh(event)
 
-        logger.info(f"Event processed successfully: {payload.get('event_type')}")
+        logger.info(f"Event stored successfully: {payload.get('event_id')} (ID: {event.id})")
 
         return {
             "status": "success",
             "message": "Event received and stored",
-            "event_type": payload.get('event_type')
+            "event_id": payload.get('event_id'),
+            "stored_id": event.id
         }
 
     except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {
             "status": "error",
             "message": str(e)
