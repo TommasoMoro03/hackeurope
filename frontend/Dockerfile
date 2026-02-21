@@ -9,18 +9,24 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci --only=production
 
 # Copy source code
 COPY . .
 
-# Accept build arguments and set as environment variables
+# Accept build arguments
 ARG VITE_GOOGLE_CLIENT_ID
 ARG VITE_API_URL
+
+# Set as environment variables for the build process
 ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 ENV VITE_API_URL=$VITE_API_URL
 
-# Build the app (now with environment variables available)
+# Debug: Print variables to build logs (remove in production)
+RUN echo "Building with VITE_GOOGLE_CLIENT_ID: $VITE_GOOGLE_CLIENT_ID"
+RUN echo "Building with VITE_API_URL: $VITE_API_URL"
+
+# Build the app (environment variables are now available)
 RUN npm run build
 
 # Stage 2: Production
