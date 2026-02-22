@@ -1,9 +1,9 @@
-import { Button } from '@/components/Button';
 import { useState } from 'react';
 import { GlassPanel } from '@/components/ui/glass-panel';
+import { MovingBorder } from '@/components/ui/moving-border';
 import { TrafficSplitSlider } from '@/components/TrafficSplitSlider';
 import { cn } from '@/lib/utils';
-import { Sparkles } from 'lucide-react';
+import { Send, Pencil } from 'lucide-react';
 
 interface Segment {
   name: string;
@@ -41,14 +41,15 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
     metrics: '',
     preview_url: '',
     segments: [
-      { name: 'Control', instructions: '', percentage: 0.5 },
-      { name: 'Variant B', instructions: '', percentage: 0.5 },
+      { name: 'A', instructions: '', percentage: 0.5 },
+      { name: 'B', instructions: '', percentage: 0.5 },
     ],
   });
   const [percentageErrorInternal, setPercentageError] = useState<string | null>(null);
   const percentageError = percentageErrorProp ?? percentageErrorInternal;
+  const [isEditingName, setIsEditingName] = useState(false);
 
-  const handleSegmentChange = (index: number, field: 'name' | 'instructions' | 'percentage', value: string | number) => {
+  const handleSegmentChange = (index: number, field: 'instructions' | 'percentage', value: string | number) => {
     const newSegments = [...form.segments];
     newSegments[index] = { ...newSegments[index], [field]: value };
     setForm({ ...form, segments: newSegments });
@@ -87,13 +88,36 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
             <div className="flex-1 overflow-y-auto p-3 space-y-3">
               <div>
                 <label className={labelStyles}>Experiment Name</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={cn(inputStyles, 'text-base font-semibold placeholder:text-slate-500')}
-                  placeholder={DEFAULT_EXPERIMENT_NAME}
-                />
+                {isEditingName ? (
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onBlur={() => setIsEditingName(false)}
+                    onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
+                    className={cn(inputStyles, 'text-base font-semibold placeholder:text-slate-500')}
+                    placeholder={DEFAULT_EXPERIMENT_NAME}
+                    autoFocus
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 group">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingName(true)}
+                      className="text-left text-base font-semibold text-white flex-1 min-w-0 truncate hover:text-slate-300 transition-colors"
+                    >
+                      {form.name.trim() || DEFAULT_EXPERIMENT_NAME}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingName(true)}
+                      className="p-1.5 rounded text-slate-500 hover:text-slate-300 hover:bg-white/5 opacity-60 group-hover:opacity-100 transition-opacity shrink-0"
+                      aria-label="Edit experiment name"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -150,92 +174,68 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className={labelStyles}>
-                  Preview URL <span className="text-slate-600 font-normal">(optional)</span>
-                </label>
-                <input
-                  type="url"
-                  value={form.preview_url}
-                  onChange={(e) => setForm({ ...form, preview_url: e.target.value })}
-                  placeholder="https://your-app.com"
-                  className={inputStyles}
-                />
-                <p className="text-[10px] text-slate-500">
-                  URL of your deployed application for live preview (e.g., https://myapp.vercel.app)
-                </p>
-              </div>
             </div>
             <div className="p-3 border-t border-white/5 shrink-0">
-              <Button type="submit" className="glow-button w-full py-2 text-xs flex items-center justify-center gap-2">
-                <Sparkles className="w-3 h-3" />
-                Create Experiment
-              </Button>
+              <MovingBorder className="w-full" innerClassName="rounded-lg !bg-transparent p-0">
+                <button
+                  type="submit"
+                  className="w-full py-2.5 px-4 text-xs font-medium text-white bg-primary hover:bg-primary-glow flex items-center justify-between transition-colors rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Create Experiment
+                  <Send className="w-3 h-3 shrink-0" />
+                </button>
+              </MovingBorder>
             </div>
           </GlassPanel>
         </aside>
 
-        {/* Right / Below: Two segment cards */}
+        {/* Right / Below: Two segment cards - A/B watermark + instructions in same card */}
         <main className={cn('flex min-w-0', isCardsLayout ? 'flex-col gap-4 md:flex-row' : 'flex-1 gap-4')}>
-          {/* Control card */}
+          {/* A card */}
           <div className="flex-1 flex flex-col min-w-0">
-            <GlassPanel title="Control" className="flex-1 flex flex-col overflow-hidden rounded-xl border-slate-700/50">
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                <div>
-                  <label className={labelStyles}>Segment Name</label>
-                  <input
-                    type="text"
-                    value={form.segments[0]?.name ?? ''}
-                    onChange={(e) => handleSegmentChange(0, 'name', e.target.value)}
-                    className={inputStyles}
-                    placeholder="Control / Baseline"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className={labelStyles}>Instructions for AI</label>
-                  <textarea
-                    value={form.segments[0]?.instructions ?? ''}
-                    onChange={(e) => handleSegmentChange(0, 'instructions', e.target.value)}
-                    rows={3}
-                    placeholder="Keep original layout. No changes. Baseline for comparison."
-                    className={cn(inputStyles, 'resize-none min-h-[4rem]')}
-                    required
-                  />
-                </div>
+            <GlassPanel showChrome={false} className="flex-1 flex flex-col overflow-hidden rounded-xl border-slate-700/50 relative">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute top-2 left-3 text-[7rem] font-serif italic text-white/[0.07] leading-none select-none"
+              >
+                A
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 pt-20 relative z-10">
+                <label className={labelStyles}>Instructions for AI</label>
+                <textarea
+                  value={form.segments[0]?.instructions ?? ''}
+                  onChange={(e) => handleSegmentChange(0, 'instructions', e.target.value)}
+                  rows={3}
+                  placeholder="Keep original layout. No changes. Baseline for comparison."
+                  className={cn(inputStyles, 'resize-none min-h-[4rem] mt-1.5')}
+                  required
+                />
               </div>
             </GlassPanel>
           </div>
 
-          {/* Variant B card */}
+          {/* B card */}
           <div className="flex-1 flex flex-col min-w-0">
             <GlassPanel
-              title="Variant B"
-              className="flex-1 flex flex-col overflow-hidden rounded-xl border-primary/30 shadow-[0_0_30px_-5px_rgba(109,40,217,0.2)]"
+              showChrome={false}
+              className="flex-1 flex flex-col overflow-hidden rounded-xl border-primary/30 shadow-[0_0_30px_-5px_rgba(109,40,217,0.2)] relative"
             >
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                <div>
-                  <label className={labelStyles}>Segment Name</label>
-                  <input
-                    type="text"
-                    value={form.segments[1]?.name ?? ''}
-                    onChange={(e) => handleSegmentChange(1, 'name', e.target.value)}
-                    className={inputStyles}
-                    placeholder="Variant B / Treatment"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className={labelStyles}>Instructions for AI</label>
-                  <textarea
-                    value={form.segments[1]?.instructions ?? ''}
-                    onChange={(e) => handleSegmentChange(1, 'instructions', e.target.value)}
-                    rows={3}
-                    placeholder="Increase CTA contrast. Make button larger. Add urgency."
-                    className={cn(inputStyles, 'resize-none min-h-[4rem]')}
-                    required
-                  />
-                </div>
+              <div
+                aria-hidden
+                className="pointer-events-none absolute top-2 left-3 text-[7rem] font-serif italic text-primary/[0.1] leading-none select-none"
+              >
+                B
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 pt-20 relative z-10">
+                <label className={labelStyles}>Instructions for AI</label>
+                <textarea
+                  value={form.segments[1]?.instructions ?? ''}
+                  onChange={(e) => handleSegmentChange(1, 'instructions', e.target.value)}
+                  rows={3}
+                  placeholder="Increase CTA contrast. Make button larger. Add urgency."
+                  className={cn(inputStyles, 'resize-none min-h-[4rem] mt-1.5')}
+                  required
+                />
               </div>
             </GlassPanel>
           </div>
