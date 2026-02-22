@@ -1,10 +1,22 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { MovingBorder } from '@/components/ui/moving-border';
 import { TrafficSplitSlider } from '@/components/TrafficSplitSlider';
 import { cn } from '@/lib/utils';
 import { Send, Pencil } from 'lucide-react';
 import { api } from '@/lib/axios';
+
+function useAutoResize(value: string) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const resize = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+  useEffect(() => { resize(); }, [value, resize]);
+  return { ref, onInput: resize };
+}
 
 interface Segment {
   name: string;
@@ -37,6 +49,11 @@ const inputStyles =
 const labelStyles = 'block text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1.5';
 
 export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: percentageErrorProp, initialData }: ExperimentFormProps) => {
+  const descAutoResize   = useAutoResize(initialData?.description ?? '');
+  const metricsAutoResize = useAutoResize(initialData?.metrics ?? '');
+  const segAAutoResize   = useAutoResize(initialData?.segments?.[0]?.instructions ?? '');
+  const segBAutoResize   = useAutoResize(initialData?.segments?.[1]?.instructions ?? '');
+
   const [form, setForm] = useState<ExperimentFormData>({
     name: initialData?.name || DEFAULT_EXPERIMENT_NAME,
     description: initialData?.description || '',
@@ -154,12 +171,12 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
               <div className="space-y-1.5">
                 <label className={labelStyles}>Description</label>
                 <textarea
+                  ref={descAutoResize.ref}
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) => { setForm({ ...form, description: e.target.value }); descAutoResize.onInput(); }}
                   onBlur={generateName}
-                  rows={3}
                   placeholder="Describe the experiment goals..."
-                  className={cn(inputStyles, 'resize-none min-h-[4rem]')}
+                  className={cn(inputStyles, 'resize-none min-h-[4rem] overflow-hidden')}
                   required
                 />
                 {isGeneratingName && (
@@ -201,11 +218,11 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
               <div className="space-y-1.5">
                 <label className={labelStyles}>Metrics to Track</label>
                 <textarea
+                  ref={metricsAutoResize.ref}
                   value={form.metrics}
-                  onChange={(e) => setForm({ ...form, metrics: e.target.value })}
-                  rows={1}
+                  onChange={(e) => { setForm({ ...form, metrics: e.target.value }); metricsAutoResize.onInput(); }}
                   placeholder="e.g. Proportion of clicks"
-                  className={cn(inputStyles, 'resize-none')}
+                  className={cn(inputStyles, 'resize-none min-h-[2rem] overflow-hidden')}
                 />
               </div>
 
@@ -240,12 +257,12 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
               <div className="flex-1 overflow-y-auto scrollbar-hide p-3 pt-20 relative z-10">
                 <label className={labelStyles}>Instructions for AI</label>
                 <textarea
+                  ref={segAAutoResize.ref}
                   value={form.segments[0]?.instructions ?? ''}
-                  onChange={(e) => handleSegmentChange(0, 'instructions', e.target.value)}
+                  onChange={(e) => { handleSegmentChange(0, 'instructions', e.target.value); segAAutoResize.onInput(); }}
                   onBlur={generateName}
-                  rows={3}
                   placeholder={DEFAULT_A_INSTRUCTIONS}
-                  className={cn(inputStyles, 'resize-none min-h-[4rem] mt-1.5')}
+                  className={cn(inputStyles, 'resize-none min-h-[4rem] overflow-hidden mt-1.5')}
                   required
                 />
               </div>
@@ -269,12 +286,12 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
               <div className="flex-1 overflow-y-auto scrollbar-hide p-3 pt-20 relative z-10">
                 <label className={labelStyles}>Instructions for AI</label>
                 <textarea
+                  ref={segBAutoResize.ref}
                   value={form.segments[1]?.instructions ?? ''}
-                  onChange={(e) => handleSegmentChange(1, 'instructions', e.target.value)}
+                  onChange={(e) => { handleSegmentChange(1, 'instructions', e.target.value); segBAutoResize.onInput(); }}
                   onBlur={generateName}
-                  rows={3}
                   placeholder={DEFAULT_B_INSTRUCTIONS}
-                  className={cn(inputStyles, 'resize-none min-h-[4rem] mt-1.5')}
+                  className={cn(inputStyles, 'resize-none min-h-[4rem] overflow-hidden mt-1.5')}
                   required
                 />
               </div>
