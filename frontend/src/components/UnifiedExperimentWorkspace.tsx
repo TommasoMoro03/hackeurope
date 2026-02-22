@@ -85,6 +85,7 @@ export const UnifiedExperimentWorkspace = ({
               experimentId={creatingExperiment.id}
               experimentName={creatingExperiment.name}
               onComplete={onCreationComplete}
+              onExperimentUpdate={onExperimentUpdate}
               compact
             />
           </GlassPanel>

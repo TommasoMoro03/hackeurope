@@ -1,3 +1,4 @@
+import base64
 import json
 import random
 import re
@@ -14,29 +15,33 @@ from src.config import settings
 
 class GitHubAgentService:
     """
-    Service to create Pull Requests using Anthropic's Claude agent.
-    Based on the github_linking implementation but simplified for backend use.
+    Tool-using Claude agent that navigates a GitHub repo, implements
+    A/B experiment code, and opens a PR.  Optimised for speed (tree cache,
+    batch reads, batch commit) and correctness (preview-hash contract,
+    framework pre-detection, forced first-turn tool use).
     """
 
     def __init__(self, github_token: str):
-        """
-        Initialize the GitHub Agent Service.
-
-        Args:
-            github_token: GitHub access token
-        """
         self.github_client = Github(github_token)
         self.anthropic_client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         self.model = "claude-sonnet-4-6"
-        self.max_agent_turns = 20
-        self.max_agent_retries = 4
-        self.agent_max_tokens = 2048
-        self.max_tool_result_chars = 7000
-        self.max_history_messages = 16
+        self.max_agent_turns = 25
+        self.max_agent_retries = 5
+        self.agent_max_tokens = 4096
+        self.max_tool_result_chars = 8000
+        self.max_history_messages = 20
+
+        # Populated per-run so every tool call reuses the same data.
+        self._cached_tree: Optional[List[str]] = None
+        self._cached_tree_sha: Optional[str] = None
+        # Staged writes collected here; flushed as a single commit.
+        self._staged_writes: Dict[str, str] = {}
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
     def _extract_json_from_response(self, text: str) -> Optional[Dict]:
-        """Extract JSON object from Claude's response."""
-        # Try to find JSON in the response
         match = re.search(r'\{[\s\S]*\}', text)
         if match:
             try:
@@ -45,69 +50,191 @@ class GitHubAgentService:
                 return None
         return None
 
-    def _is_safe_repo_path(self, file_path: str) -> bool:
-        """Guard against path traversal and invalid file targets."""
-        if not file_path or file_path.startswith("/") or file_path.startswith("\\"):
+    def _is_safe_repo_path(self, path: str) -> bool:
+        if not path or path.startswith("/") or path.startswith("\\"):
             return False
-        if ".." in file_path.replace("\\", "/").split("/"):
-            return False
-        return True
+        return ".." not in path.replace("\\", "/").split("/")
+
+    def _get_tree(self, repo, branch_name: str) -> List[str]:
+        """Return cached file-path list for the branch."""
+        sha = repo.get_branch(branch_name).commit.sha
+        if self._cached_tree is not None and self._cached_tree_sha == sha:
+            return self._cached_tree
+        tree = repo.get_git_tree(sha, recursive=True)
+        self._cached_tree = [item.path for item in tree.tree if item.type == "blob"]
+        self._cached_tree_sha = sha
+        return self._cached_tree
+
+    def _invalidate_tree_cache(self):
+        self._cached_tree = None
+        self._cached_tree_sha = None
+
+    def _detect_framework(self, repo, branch: str) -> str:
+        """Best-effort framework detection from package.json."""
+        try:
+            content = repo.get_contents("package.json", ref=branch)
+            pkg = json.loads(content.decoded_content.decode("utf-8"))
+            deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})}
+            if "next" in deps:
+                has_app_dir = any(p.startswith("app/") for p in self._get_tree(repo, branch))
+                return "Next.js App Router" if has_app_dir else "Next.js Pages Router"
+            if "react-router-dom" in deps or "react-router" in deps:
+                return "React + React Router"
+            if "vue" in deps:
+                return "Vue"
+            if "react" in deps:
+                return "React (Vite/CRA)"
+            return "Unknown JS framework"
+        except Exception:
+            return "Unknown"
+
+    def _build_preseed_context(self, repo, branch: str, framework: str) -> str:
+        """Pre-fetch file tree + key files so Claude skips discovery turns."""
+        tree_paths = self._get_tree(repo, branch)
+        tree_text = "\n".join(tree_paths[:300])
+
+        key_files_content = ""
+        candidates = ["package.json", "tsconfig.json"]
+        # Auto-detect likely integration points
+        integration_hints = [
+            "app/layout.tsx", "app/layout.jsx", "app/layout.js",
+            "app/page.tsx", "app/page.jsx",
+            "src/App.tsx", "src/App.jsx", "src/App.js",
+            "src/main.tsx", "src/main.jsx", "src/main.js",
+            "pages/_app.tsx", "pages/_app.jsx",
+            "src/routes.tsx", "src/router.tsx",
+        ]
+        for candidate in candidates + integration_hints:
+            if candidate in tree_paths:
+                try:
+                    fc = repo.get_contents(candidate, ref=branch)
+                    if not isinstance(fc, list):
+                        decoded = fc.decoded_content.decode("utf-8")[:6000]
+                        key_files_content += f"\n--- {candidate} ---\n{decoded}\n"
+                except Exception:
+                    pass
+
+        return f"""<repo_context>
+<framework>{framework}</framework>
+<file_tree>
+{tree_text}
+</file_tree>
+<key_files>{key_files_content}</key_files>
+</repo_context>"""
+
+    # ------------------------------------------------------------------
+    # Batch commit via Git Data API
+    # ------------------------------------------------------------------
+
+    def _flush_staged_writes(self, repo, branch_name: str, commit_message: str) -> int:
+        """Commit all staged writes as a single tree+commit. Returns files written."""
+        if not self._staged_writes:
+            return 0
+
+        branch_ref = repo.get_git_ref(f"heads/{branch_name}")
+        base_sha = branch_ref.object.sha
+        base_commit = repo.get_git_commit(base_sha)
+        base_tree_sha = base_commit.tree.sha
+
+        tree_items = []
+        for path, content in self._staged_writes.items():
+            blob = repo.create_git_blob(content, "utf-8")
+            tree_items.append({"path": path, "mode": "100644", "type": "blob", "sha": blob.sha})
+
+        new_tree = repo.create_git_tree(tree_items, base_tree=repo.get_git_tree(base_tree_sha))
+        new_commit = repo.create_git_commit(commit_message, new_tree, [base_commit])
+        branch_ref.edit(new_commit.sha)
+
+        count = len(self._staged_writes)
+        self._staged_writes.clear()
+        self._invalidate_tree_cache()
+        return count
+
+    # ------------------------------------------------------------------
+    # Tool definitions
+    # ------------------------------------------------------------------
 
     def _build_tools(self) -> List[Dict[str, Any]]:
-        """Tool definitions exposed to Claude."""
         return [
             {
                 "name": "list_files",
-                "description": "List repository files under an optional prefix path.",
+                "description": "List repo files. Pre-seeded context already includes the full tree, so only call this if you need to re-check after writes.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "path_prefix": {"type": "string"},
-                        "limit": {"type": "integer", "minimum": 1, "maximum": 300}
+                        "path_prefix": {"type": "string", "description": "e.g. 'app', 'src'"},
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 300, "default": 200}
                     }
                 }
             },
             {
                 "name": "read_file",
-                "description": "Read the contents of a repository file from the working branch.",
+                "description": "Read one file. Key files are already pre-seeded; use for additional files you need.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "path": {"type": "string"},
-                        "max_chars": {"type": "integer", "minimum": 200, "maximum": 20000}
+                        "max_chars": {"type": "integer", "minimum": 200, "maximum": 20000, "default": 10000}
                     },
                     "required": ["path"]
                 }
             },
             {
-                "name": "search_code",
-                "description": "Search code in the repository using GitHub code search.",
+                "name": "read_multiple_files",
+                "description": "Read up to 5 files in one call. Much faster than multiple read_file calls.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string"},
-                        "path_prefix": {"type": "string"},
-                        "limit": {"type": "integer", "minimum": 1, "maximum": 30}
+                        "paths": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "minItems": 1,
+                            "maxItems": 5,
+                            "description": "File paths to read"
+                        },
+                        "max_chars_each": {"type": "integer", "minimum": 200, "maximum": 12000, "default": 6000}
                     },
-                    "required": ["query"]
+                    "required": ["paths"]
+                }
+            },
+            {
+                "name": "grep_repo",
+                "description": "Search file contents in the repo for a string/pattern. Fast local search on cached tree. Use to find route definitions, imports, providers.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "pattern": {"type": "string", "description": "Text to search for (case-insensitive substring match)"},
+                        "path_prefix": {"type": "string"},
+                        "max_results": {"type": "integer", "minimum": 1, "maximum": 20, "default": 10}
+                    },
+                    "required": ["pattern"]
                 }
             },
             {
                 "name": "write_file",
-                "description": "Create or update a file in the working branch.",
+                "description": "Stage a file write (create or update). Writes are batched into a single commit for speed. Pass COMPLETE file content.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "path": {"type": "string"},
-                        "content": {"type": "string"},
-                        "commit_message": {"type": "string"}
+                        "content": {"type": "string"}
                     },
                     "required": ["path", "content"]
                 }
             },
             {
+                "name": "flush_writes",
+                "description": "Commit all staged writes to the branch as a single commit. Call after all write_file calls are done.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "commit_message": {"type": "string", "default": "Implement experiment"}
+                    }
+                }
+            },
+            {
                 "name": "compare_changes",
-                "description": "Compare branch changes versus base branch.",
+                "description": "View diff between working branch and base. Call AFTER flush_writes to verify file count.",
                 "input_schema": {
                     "type": "object",
                     "properties": {}
@@ -115,79 +242,21 @@ class GitHubAgentService:
             },
             {
                 "name": "fetch_documentation",
-                "description": "Fetch public documentation URL content snippet for implementation guidance.",
+                "description": "Fetch a public docs URL for API reference. Use when unsure about framework patterns.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "url": {"type": "string"},
-                        "max_chars": {"type": "integer", "minimum": 500, "maximum": 8000}
+                        "max_chars": {"type": "integer", "minimum": 500, "maximum": 8000, "default": 4000}
                     },
                     "required": ["url"]
                 }
             }
         ]
 
-    def _is_rate_limit_error(self, error: Exception) -> bool:
-        """Best-effort detection for Anthropic/API rate-limit responses."""
-        text = str(error).lower()
-        return "429" in text or "rate_limit" in text or "rate limit" in text
-
-    def _call_anthropic_with_retry(
-        self,
-        *,
-        system_prompt: str,
-        messages: List[Dict[str, Any]],
-        tools: List[Dict[str, Any]]
-    ):
-        """Call Anthropic with retry/backoff on rate limiting."""
-        for attempt in range(self.max_agent_retries):
-            try:
-                return self.anthropic_client.messages.create(
-                    model=self.model,
-                    max_tokens=max(1024, self.agent_max_tokens - attempt * 256),
-                    system=system_prompt,
-                    messages=messages,
-                    tools=tools
-                )
-            except Exception as e:
-                if not self._is_rate_limit_error(e) or attempt == self.max_agent_retries - 1:
-                    raise
-                delay = min(20, (2 ** attempt) + random.uniform(0.2, 1.3))
-                print(f"Claude rate-limited, retrying in {delay:.1f}s (attempt {attempt + 1})")
-                time.sleep(delay)
-        raise Exception("Claude call failed after retries")
-
-    def _compact_tool_result(self, tool_name: str, result: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Keep tool outputs token-efficient to avoid TPM spikes.
-        Preserves key fields while truncating large payloads.
-        """
-        compact = dict(result)
-        if tool_name == "read_file" and "content" in compact and isinstance(compact["content"], str):
-            compact["content"] = compact["content"][:5000]
-            compact["truncated"] = True
-        if tool_name == "list_files" and "files" in compact and isinstance(compact["files"], list):
-            compact["files"] = compact["files"][:120]
-            compact["count"] = len(compact["files"])
-        if tool_name == "search_code" and "results" in compact and isinstance(compact["results"], list):
-            compact["results"] = compact["results"][:20]
-            compact["count"] = len(compact["results"])
-        if tool_name == "compare_changes" and "files" in compact and isinstance(compact["files"], list):
-            compact["files"] = compact["files"][:80]
-            compact["total_files"] = len(compact["files"])
-        if tool_name == "fetch_documentation" and "content" in compact and isinstance(compact["content"], str):
-            compact["content"] = compact["content"][:4000]
-            compact["truncated"] = True
-
-        serialized = json.dumps(compact)
-        if len(serialized) > self.max_tool_result_chars:
-            compact = {
-                "ok": compact.get("ok", False),
-                "tool": tool_name,
-                "truncated": True,
-                "preview": serialized[:self.max_tool_result_chars]
-            }
-        return compact
+    # ------------------------------------------------------------------
+    # Tool execution
+    # ------------------------------------------------------------------
 
     def _execute_tool_call(
         self,
@@ -200,167 +269,191 @@ class GitHubAgentService:
         branch_name: str,
         default_branch: str
     ) -> Dict[str, Any]:
-        """Execute one Claude tool call and return serializable result."""
         try:
             if tool_name == "list_files":
-                path_prefix = (tool_input.get("path_prefix") or "").strip().lstrip("/")
-                limit = int(tool_input.get("limit") or 120)
-                limit = max(1, min(limit, 300))
-
-                tree = repo.get_git_tree(repo.get_branch(branch_name).commit.sha, recursive=True)
-                files = [
-                    item.path for item in tree.tree
-                    if item.type == "blob" and (not path_prefix or item.path.startswith(path_prefix))
-                ]
-                files = files[:limit]
-                return {"ok": True, "files": files, "count": len(files)}
+                prefix = (tool_input.get("path_prefix") or "").strip().lstrip("/")
+                limit = max(1, min(int(tool_input.get("limit") or 200), 300))
+                files = self._get_tree(repo, branch_name)
+                if prefix:
+                    files = [f for f in files if f.startswith(prefix)]
+                return {"ok": True, "files": files[:limit], "count": min(len(files), limit)}
 
             if tool_name == "read_file":
                 path = (tool_input.get("path") or "").strip().lstrip("/")
-                max_chars = int(tool_input.get("max_chars") or 8000)
-                max_chars = max(200, min(max_chars, 20000))
+                max_chars = max(200, min(int(tool_input.get("max_chars") or 10000), 20000))
                 if not self._is_safe_repo_path(path):
-                    return {"ok": False, "error": "Invalid file path"}
-
+                    return {"ok": False, "error": "Invalid path"}
+                # Check staged writes first
+                if path in self._staged_writes:
+                    text = self._staged_writes[path]
+                    return {"ok": True, "path": path, "content": text[:max_chars], "truncated": len(text) > max_chars, "source": "staged"}
                 content = repo.get_contents(path, ref=branch_name)
                 if isinstance(content, list):
                     return {"ok": False, "error": "Path is a directory"}
-
                 try:
                     text = content.decoded_content.decode("utf-8")
                 except UnicodeDecodeError:
-                    return {"ok": False, "error": "File is not UTF-8 text"}
+                    return {"ok": False, "error": "Not UTF-8"}
+                return {"ok": True, "path": path, "content": text[:max_chars], "truncated": len(text) > max_chars}
 
-                return {
-                    "ok": True,
-                    "path": path,
-                    "content": text[:max_chars],
-                    "truncated": len(text) > max_chars
-                }
-
-            if tool_name == "search_code":
-                query = (tool_input.get("query") or "").strip()
-                if not query:
-                    return {"ok": False, "error": "Missing query"}
-                path_prefix = (tool_input.get("path_prefix") or "").strip().lstrip("/")
-                limit = int(tool_input.get("limit") or 12)
-                limit = max(1, min(limit, 30))
-
-                qualified_query = f"{query} repo:{owner}/{repo_name} in:file"
-                if path_prefix:
-                    qualified_query += f" path:{path_prefix}"
-
+            if tool_name == "read_multiple_files":
+                paths = tool_input.get("paths") or []
+                max_chars = max(200, min(int(tool_input.get("max_chars_each") or 6000), 12000))
                 results = []
-                for idx, item in enumerate(self.github_client.search_code(qualified_query)):
-                    if idx >= limit:
-                        break
-                    results.append(
-                        {
-                            "path": item.path,
-                            "name": item.name,
-                            "sha": item.sha,
-                            "url": item.html_url
-                        }
-                    )
+                for p in paths[:5]:
+                    p = p.strip().lstrip("/")
+                    if not self._is_safe_repo_path(p):
+                        results.append({"path": p, "ok": False, "error": "Invalid path"})
+                        continue
+                    if p in self._staged_writes:
+                        text = self._staged_writes[p]
+                        results.append({"path": p, "ok": True, "content": text[:max_chars], "truncated": len(text) > max_chars})
+                        continue
+                    try:
+                        fc = repo.get_contents(p, ref=branch_name)
+                        if isinstance(fc, list):
+                            results.append({"path": p, "ok": False, "error": "Directory"})
+                        else:
+                            text = fc.decoded_content.decode("utf-8")
+                            results.append({"path": p, "ok": True, "content": text[:max_chars], "truncated": len(text) > max_chars})
+                    except Exception as e:
+                        results.append({"path": p, "ok": False, "error": str(e)[:200]})
+                return {"ok": True, "files": results}
 
-                return {"ok": True, "results": results, "count": len(results)}
+            if tool_name == "grep_repo":
+                pattern = (tool_input.get("pattern") or "").strip().lower()
+                if not pattern:
+                    return {"ok": False, "error": "Empty pattern"}
+                prefix = (tool_input.get("path_prefix") or "").strip().lstrip("/")
+                max_results = max(1, min(int(tool_input.get("max_results") or 10), 20))
+                tree_paths = self._get_tree(repo, branch_name)
+                if prefix:
+                    tree_paths = [p for p in tree_paths if p.startswith(prefix)]
+                # Only search text-like files
+                searchable_exts = {".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".html", ".md", ".py", ".yml", ".yaml", ".toml", ".cfg", ".env", ".txt", ".vue", ".svelte"}
+                hits = []
+                for fp in tree_paths:
+                    ext = "." + fp.rsplit(".", 1)[-1] if "." in fp else ""
+                    if ext.lower() not in searchable_exts:
+                        continue
+                    try:
+                        fc = repo.get_contents(fp, ref=branch_name)
+                        if isinstance(fc, list):
+                            continue
+                        text = fc.decoded_content.decode("utf-8", errors="ignore")
+                        lines = text.split("\n")
+                        for i, line in enumerate(lines):
+                            if pattern in line.lower():
+                                hits.append({"path": fp, "line": i + 1, "text": line.strip()[:200]})
+                                break
+                    except Exception:
+                        continue
+                    if len(hits) >= max_results:
+                        break
+                return {"ok": True, "matches": hits, "count": len(hits)}
 
             if tool_name == "write_file":
                 path = (tool_input.get("path") or "").strip().lstrip("/")
                 content = tool_input.get("content") or ""
-                commit_message = (
-                    tool_input.get("commit_message")
-                    or f"Implement experiment changes in {path}"
-                )
-
                 if not self._is_safe_repo_path(path):
-                    return {"ok": False, "error": "Invalid file path"}
+                    return {"ok": False, "error": "Invalid path"}
+                self._staged_writes[path] = content
+                return {"ok": True, "path": path, "staged": True, "total_staged": len(self._staged_writes)}
 
-                action = "create"
-                existing_sha = None
-                try:
-                    existing_file = repo.get_contents(path, ref=branch_name)
-                    if isinstance(existing_file, list):
-                        return {"ok": False, "error": "Path is a directory"}
-                    existing_sha = existing_file.sha
-                    action = "update"
-                except GithubException as e:
-                    if e.status != 404:
-                        raise
-
-                if action == "update":
-                    repo.update_file(
-                        path=path,
-                        message=commit_message,
-                        content=content,
-                        sha=existing_sha,
-                        branch=branch_name
-                    )
-                else:
-                    repo.create_file(
-                        path=path,
-                        message=commit_message,
-                        content=content,
-                        branch=branch_name
-                    )
-
-                return {"ok": True, "path": path, "action": action}
+            if tool_name == "flush_writes":
+                msg = tool_input.get("commit_message") or "Implement experiment"
+                count = self._flush_staged_writes(repo, branch_name, msg)
+                return {"ok": True, "committed_files": count}
 
             if tool_name == "compare_changes":
                 comparison = repo.compare(default_branch, branch_name)
-                files = []
-                for file_item in comparison.files[:120]:
-                    files.append(
-                        {
-                            "filename": file_item.filename,
-                            "status": file_item.status,
-                            "additions": file_item.additions,
-                            "deletions": file_item.deletions,
-                            "changes": file_item.changes
-                        }
-                    )
-                return {
-                    "ok": True,
-                    "total_files": len(files),
-                    "ahead_by": comparison.ahead_by,
-                    "files": files
-                }
+                files = [
+                    {"filename": f.filename, "status": f.status, "additions": f.additions, "deletions": f.deletions}
+                    for f in comparison.files[:100]
+                ]
+                return {"ok": True, "total_files": len(comparison.files), "ahead_by": comparison.ahead_by, "files": files}
 
             if tool_name == "fetch_documentation":
                 url = (tool_input.get("url") or "").strip()
-                max_chars = int(tool_input.get("max_chars") or 4000)
-                max_chars = max(500, min(max_chars, 8000))
+                max_chars = max(500, min(int(tool_input.get("max_chars") or 4000), 8000))
                 parsed = urlparse(url)
-
                 if parsed.scheme not in ("http", "https"):
-                    return {"ok": False, "error": "Only http(s) URLs are allowed"}
-                hostname = (parsed.hostname or "").lower()
-                if hostname in {"localhost", "127.0.0.1", "::1"}:
-                    return {"ok": False, "error": "Localhost URLs are not allowed"}
-
-                response = requests.get(
-                    url,
-                    timeout=12,
-                    headers={"User-Agent": "hackeurope-ai-agent/1.0"}
-                )
-                text = response.text or ""
-                # Basic HTML tag stripping for compact context.
+                    return {"ok": False, "error": "Only http(s) URLs"}
+                if (parsed.hostname or "").lower() in {"localhost", "127.0.0.1", "::1"}:
+                    return {"ok": False, "error": "Localhost not allowed"}
+                resp = requests.get(url, timeout=12, headers={"User-Agent": "hackeurope-ai-agent/1.0"})
+                text = resp.text or ""
                 text = re.sub(r"<script[\s\S]*?</script>", " ", text, flags=re.IGNORECASE)
                 text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
                 text = re.sub(r"<[^>]+>", " ", text)
                 text = re.sub(r"\s+", " ", text).strip()
-
-                return {
-                    "ok": True,
-                    "url": url,
-                    "status_code": response.status_code,
-                    "content": text[:max_chars],
-                    "truncated": len(text) > max_chars
-                }
+                return {"ok": True, "url": url, "content": text[:max_chars], "truncated": len(text) > max_chars}
 
             return {"ok": False, "error": f"Unknown tool: {tool_name}"}
         except Exception as e:
-            return {"ok": False, "error": str(e), "tool": tool_name}
+            return {"ok": False, "error": str(e)[:500], "tool": tool_name}
+
+    # ------------------------------------------------------------------
+    # Compact results to stay within TPM budget
+    # ------------------------------------------------------------------
+
+    def _compact_tool_result(self, tool_name: str, result: Dict[str, Any]) -> Dict[str, Any]:
+        compact = dict(result)
+        if tool_name == "read_file" and isinstance(compact.get("content"), str):
+            compact["content"] = compact["content"][:8000]
+        if tool_name == "read_multiple_files" and isinstance(compact.get("files"), list):
+            for f in compact["files"]:
+                if isinstance(f.get("content"), str):
+                    f["content"] = f["content"][:5000]
+        if tool_name == "list_files" and isinstance(compact.get("files"), list):
+            compact["files"] = compact["files"][:200]
+        if tool_name == "grep_repo" and isinstance(compact.get("matches"), list):
+            compact["matches"] = compact["matches"][:15]
+        if tool_name == "compare_changes" and isinstance(compact.get("files"), list):
+            real_total = compact.get("total_files", len(compact["files"]))
+            compact["files"] = compact["files"][:80]
+            compact["total_files"] = real_total
+        if tool_name == "fetch_documentation" and isinstance(compact.get("content"), str):
+            compact["content"] = compact["content"][:4000]
+
+        serialized = json.dumps(compact)
+        if len(serialized) > self.max_tool_result_chars:
+            compact = {"ok": compact.get("ok", False), "tool": tool_name, "truncated": True, "preview": serialized[:self.max_tool_result_chars]}
+        return compact
+
+    # ------------------------------------------------------------------
+    # Retry wrapper
+    # ------------------------------------------------------------------
+
+    def _is_retryable_error(self, error: Exception) -> bool:
+        text = str(error).lower()
+        return any(x in text for x in ("429", "rate_limit", "rate limit", "500", "502", "503", "504", "timeout", "connection"))
+
+    def _call_anthropic_with_retry(self, *, system_prompt, messages, tools, tool_choice=None):
+        for attempt in range(self.max_agent_retries):
+            try:
+                kwargs: Dict[str, Any] = {
+                    "model": self.model,
+                    "max_tokens": self.agent_max_tokens,
+                    "temperature": 0,
+                    "system": system_prompt,
+                    "messages": messages,
+                    "tools": tools,
+                }
+                if tool_choice:
+                    kwargs["tool_choice"] = tool_choice
+                return self.anthropic_client.messages.create(**kwargs)
+            except Exception as e:
+                if not self._is_retryable_error(e) or attempt == self.max_agent_retries - 1:
+                    raise
+                delay = min(40, (2 ** attempt) + random.uniform(0.5, 2.5))
+                print(f"Claude retry in {delay:.1f}s (attempt {attempt + 1}): {type(e).__name__}")
+                time.sleep(delay)
+        raise Exception("Claude call failed after retries")
+
+    # ------------------------------------------------------------------
+    # Agent loop
+    # ------------------------------------------------------------------
 
     def _run_claude_tool_agent(
         self,
@@ -373,43 +466,49 @@ class GitHubAgentService:
         task_prompt: str,
         min_changed_files: int
     ) -> Dict[str, Any]:
-        """Run Claude in tool-use loop until completion or max turns."""
         tools = self._build_tools()
 
-        system_prompt = """You are an expert repository-integrated coding agent.
+        system_prompt = """You are a fast, reliable repository-integrated coding agent.
 
-You MUST use tools to inspect the repository before writing code.
-Workflow:
-1) Discover framework, entry points, routes/layouts, and tracking patterns
-2) Plan minimal additive integration
-3) Implement changes with write_file tool across all required files
-4) Use compare_changes to verify integration and file coverage
-5) Finish only when implementation is complete and coherent
+CONTEXT: The user message includes pre-seeded repo context (file tree, framework, key files). Use it—don't re-read files you already have.
 
-Constraints:
-- Additive changes only
-- Do not remove unrelated existing functionality
-- Match project style and conventions
-- Use actual experiment/event IDs from the request
-- Prefer smaller, targeted edits over rewrites
+WORKFLOW:
+1. Read any additional files you need with read_file or read_multiple_files
+2. Use write_file for EACH file (new or modified). Provide COMPLETE content.
+3. Call flush_writes to commit all staged files in one batch
+4. Call compare_changes to verify
+5. Output final JSON
 
-Final response MUST be JSON only with this schema:
-{
-  "status": "done",
-  "commitMessage": "string",
-  "prTitle": "string",
-  "prDescription": "string",
-  "verificationNotes": "string"
-}
+PREVIEW HASHING CONTRACT (critical for correctness):
+- Each segment has a preview_hash string
+- The app MUST check URL param ?x=HASH on load
+- If ?x matches a segment's hash → force that variant, skip random assignment
+- This enables QA preview of each variant via URL
+- Use the EXACT hash values from the experiment definition
+
+RULES:
+- Additive only — never remove existing routes, providers, or functionality
+- Match existing code style exactly
+- Use real IDs from the experiment data (experiment_id, segment_id, project_id)
+- Track events via fetch() to the webhook URL
+
+FINAL OUTPUT (JSON, after compare_changes confirms writes):
+{"status":"done","commitMessage":"...","prTitle":"...","prDescription":"...","verificationNotes":"..."}
 """
         messages: List[Dict[str, Any]] = [{"role": "user", "content": task_prompt}]
         final_text = ""
+        continuation_attempts = 0
+        is_first_turn = True
 
-        for _ in range(self.max_agent_turns):
+        for turn in range(self.max_agent_turns):
+            tc = {"type": "any"} if is_first_turn else None
+            is_first_turn = False
+
             response = self._call_anthropic_with_retry(
                 system_prompt=system_prompt,
                 messages=messages,
-                tools=tools
+                tools=tools,
+                tool_choice=tc,
             )
 
             assistant_blocks: List[Dict[str, Any]] = []
@@ -421,126 +520,69 @@ Final response MUST be JSON only with this schema:
                     text_chunks.append(block.text)
                     assistant_blocks.append({"type": "text", "text": block.text})
                 elif block.type == "tool_use":
-                    assistant_blocks.append(
-                        {
-                            "type": "tool_use",
-                            "id": block.id,
-                            "name": block.name,
-                            "input": block.input
-                        }
-                    )
+                    assistant_blocks.append({"type": "tool_use", "id": block.id, "name": block.name, "input": block.input})
                     result = self._execute_tool_call(
-                        tool_name=block.name,
-                        tool_input=block.input,
-                        repo=repo,
-                        owner=owner,
-                        repo_name=repo_name,
-                        branch_name=branch_name,
-                        default_branch=default_branch
+                        tool_name=block.name, tool_input=block.input,
+                        repo=repo, owner=owner, repo_name=repo_name,
+                        branch_name=branch_name, default_branch=default_branch,
                     )
-                    compact_result = self._compact_tool_result(block.name, result)
-                    tool_result_blocks.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": json.dumps(compact_result)
-                        }
-                    )
+                    compact = self._compact_tool_result(block.name, result)
+                    tool_result_blocks.append({"type": "tool_result", "tool_use_id": block.id, "content": json.dumps(compact)})
 
             if assistant_blocks:
                 messages.append({"role": "assistant", "content": assistant_blocks})
 
+            stop_reason = getattr(response, "stop_reason", "") or ""
+
             if tool_result_blocks:
                 messages.append({"role": "user", "content": tool_result_blocks})
-                if len(messages) > self.max_history_messages:
-                    messages = [messages[0]] + messages[-(self.max_history_messages - 1):]
+                # Trim history but never orphan tool_result: each user tool_result must follow its assistant tool_use.
+                # Remove oldest (assistant, user) pairs from the front; always keep [0] (initial prompt).
+                while len(messages) > self.max_history_messages and len(messages) >= 3:
+                    messages = [messages[0]] + messages[3:]
                 continue
 
             final_text = "\n".join(text_chunks).strip()
+            if final_text:
+                break
+            if stop_reason == "end_turn" and continuation_attempts < 2:
+                # Auto-flush any un-flushed writes before asking for final JSON
+                if self._staged_writes:
+                    count = self._flush_staged_writes(repo, branch_name, "Implement experiment")
+                    messages.append({"role": "user", "content": f"Auto-flushed {count} staged files. Now output your final JSON."})
+                else:
+                    messages.append({"role": "user", "content": "Output your final JSON now (status, prTitle, prDescription, commitMessage, verificationNotes)."})
+                continuation_attempts += 1
+                continue
             break
 
+        # Safety: flush any remaining staged writes
+        if self._staged_writes:
+            self._flush_staged_writes(repo, branch_name, "Implement experiment (final flush)")
+
         if not final_text:
-            raise Exception("Claude tool agent did not produce a final response")
+            raise Exception("Claude agent did not produce a final response")
 
         final_payload = self._extract_json_from_response(final_text)
         if not final_payload or final_payload.get("status") != "done":
-            raise Exception("Claude tool agent returned invalid final payload")
+            raise Exception("Claude agent returned invalid final payload")
 
         comparison = self._execute_tool_call(
-            tool_name="compare_changes",
-            tool_input={},
-            repo=repo,
-            owner=owner,
-            repo_name=repo_name,
-            branch_name=branch_name,
-            default_branch=default_branch
+            tool_name="compare_changes", tool_input={},
+            repo=repo, owner=owner, repo_name=repo_name,
+            branch_name=branch_name, default_branch=default_branch,
         )
-        total_changed_files = int(comparison.get("total_files") or 0)
-        if total_changed_files < min_changed_files:
-            raise Exception(
-                f"Insufficient integration changes: {total_changed_files} files changed, "
-                f"required at least {min_changed_files}"
-            )
+        total = int(comparison.get("total_files") or 0)
+        if total < min_changed_files:
+            raise Exception(f"Only {total} files changed, need at least {min_changed_files}")
 
         final_payload["changed_files"] = comparison.get("files", [])
-        final_payload["changed_files_count"] = total_changed_files
+        final_payload["changed_files_count"] = total
         return final_payload
 
-    def _get_repo_context(self, repo, max_files: int = 100) -> str:
-        """
-        Build repository context for Claude.
-
-        Args:
-            repo: GitHub repository object
-            max_files: Maximum number of files to include in context
-
-        Returns:
-            XML-formatted repository context
-        """
-        # Get default branch
-        default_branch = repo.default_branch
-
-        # Get tree
-        tree = repo.get_git_tree(repo.get_branch(default_branch).commit.sha, recursive=True)
-
-        # Get file paths
-        file_paths = [item.path for item in tree.tree if item.type == 'blob']
-        file_paths = file_paths[:max_files]  # Limit files
-
-        # Build file tree preview
-        file_tree = '\n'.join(file_paths[:500])  # Limit to 500 paths in preview
-
-        # Try to get key files
-        key_files = ['package.json', 'tsconfig.json', 'README.md']
-        documents_xml = ""
-
-        for file_path in key_files:
-            if file_path in file_paths:
-                try:
-                    content = repo.get_contents(file_path, ref=default_branch)
-                    if hasattr(content, 'decoded_content'):
-                        decoded = content.decoded_content.decode('utf-8')[:5000]  # Limit size
-                        documents_xml += f"""<document>
-<source>{file_path}</source>
-<content>
-{decoded}
-</content>
-</document>
-
-"""
-                except:
-                    pass
-
-        context = f"""<repository_context>
-<file_tree>
-{file_tree}
-</file_tree>
-<documents>
-{documents_xml}
-</documents>
-</repository_context>"""
-
-        return context
+    # ------------------------------------------------------------------
+    # Public entry point
+    # ------------------------------------------------------------------
 
     def create_experiment_pr(
         self,
@@ -549,69 +591,63 @@ Final response MUST be JSON only with this schema:
         experiment_data: Dict,
         events_data: Dict
     ) -> Dict[str, Any]:
-        """
-        Create a Pull Request for an experiment using Claude agent.
-
-        Args:
-            owner: Repository owner
-            repo_name: Repository name
-            experiment_data: Full experiment JSON
-            events_data: Events and computation logic JSON
-
-        Returns:
-            Dictionary with PR URL and number
-        """
-        # Get repository
         repo = self.github_client.get_repo(f"{owner}/{repo_name}")
         default_branch = repo.default_branch
 
-        # Create new branch
         branch_name = f"experiment-{experiment_data['name'].lower().replace(' ', '-')}-{int(time.time())}"
         ref = repo.get_git_ref(f"heads/{default_branch}")
         repo.create_git_ref(ref=f"refs/heads/{branch_name}", sha=ref.object.sha)
 
-        # Build prompt from template
+        # Pre-seed: detect framework + build context
+        framework = self._detect_framework(repo, default_branch)
+        preseed = self._build_preseed_context(repo, default_branch, framework)
+
         from src.prompts.pr_creation import PR_CREATION_PROMPT
 
-        preview_hashes_json = json.dumps(
-            experiment_data.get("segment_preview_hashes", {}), indent=2
-        )
+        preview_hashes = experiment_data.get("segment_preview_hashes", {})
 
         prompt = PR_CREATION_PROMPT
         prompt = prompt.replace("{{EXPERIMENT_JSON}}", json.dumps(experiment_data, indent=2))
         prompt = prompt.replace("{{EVENTS_JSON}}", json.dumps(events_data, indent=2))
-        prompt = prompt.replace("{{EXPERIMENT_NAME}}", experiment_data['name'])
-        prompt = prompt.replace("{{NUM_SEGMENTS}}", str(len(experiment_data.get('segments', []))))
+        prompt = prompt.replace("{{EXPERIMENT_NAME}}", experiment_data["name"])
+        prompt = prompt.replace("{{NUM_SEGMENTS}}", str(len(experiment_data.get("segments", []))))
         prompt = prompt.replace("{{WEBHOOK_URL}}", "http://localhost:9000/webhook/event")
-        prompt = prompt.replace("{{PREVIEW_HASHES_JSON}}", preview_hashes_json)
+        prompt = prompt.replace("{{PREVIEW_HASHES_JSON}}", json.dumps(preview_hashes, indent=2))
 
-        user_message = f"""Repository: {owner}/{repo_name}
-Base branch: {default_branch}
-Working branch: {branch_name}
+        # Build explicit hash mapping for clarity
+        hash_mapping_lines = []
+        for seg in experiment_data.get("segments", []):
+            h = seg.get("preview_hash", preview_hashes.get(str(seg["id"]), "???"))
+            hash_mapping_lines.append(f"  Segment '{seg['name']}' (id={seg['id']}): preview_hash = \"{h}\"  →  URL: ?x={h}")
+
+        hash_mapping = "\n".join(hash_mapping_lines)
+
+        user_message = f"""Repo: {owner}/{repo_name} | Framework: {framework} | Branch: {branch_name}
+
+{preseed}
+
+PREVIEW HASH MAPPING (use these EXACT values):
+{hash_mapping}
 
 TASK:
 {prompt}
 
-Use the provided tools to inspect, implement, and verify changes.
-Do not finish until compare_changes confirms a coherent multi-file integration."""
+Use tools to implement. Call write_file for each file, then flush_writes, then compare_changes. Output final JSON when done."""
 
         min_changed_files = max(2, min(6, len(experiment_data.get("segments", [])) + 1))
+        self._staged_writes.clear()
+        self._invalidate_tree_cache()
+
         result = self._run_claude_tool_agent(
-            repo=repo,
-            owner=owner,
-            repo_name=repo_name,
-            branch_name=branch_name,
-            default_branch=default_branch,
-            task_prompt=user_message,
-            min_changed_files=min_changed_files
+            repo=repo, owner=owner, repo_name=repo_name,
+            branch_name=branch_name, default_branch=default_branch,
+            task_prompt=user_message, min_changed_files=min_changed_files,
         )
 
-        # Create Pull Request
         pr = repo.create_pull(
             title=result.get("prTitle", f"Implement {experiment_data['name']} experiment"),
             body=result.get("prDescription", f"AI-generated experiment implementation for {experiment_data['name']}"),
-            head=branch_name,
-            base=default_branch
+            head=branch_name, base=default_branch,
         )
 
         return {
@@ -619,5 +655,5 @@ Do not finish until compare_changes confirms a coherent multi-file integration."
             "pr_number": pr.number,
             "branch_name": branch_name,
             "changed_files_count": result.get("changed_files_count"),
-            "verification_notes": result.get("verificationNotes", "")
+            "verification_notes": result.get("verificationNotes", ""),
         }

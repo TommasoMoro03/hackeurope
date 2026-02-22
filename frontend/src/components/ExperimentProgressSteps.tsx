@@ -7,6 +7,7 @@ interface ExperimentProgressStepsProps {
   experimentName: string;
   onComplete: (experimentId?: number) => void;
   compact?: boolean;
+  onExperimentUpdate?: (updates: { preview_url?: string }) => void;
 }
 
 interface ProgressStep {
@@ -20,9 +21,13 @@ export const ExperimentProgressSteps = ({
   experimentName,
   onComplete,
   compact = false,
+  onExperimentUpdate,
 }: ExperimentProgressStepsProps) => {
   const [status, setStatus] = useState<string>('started');
   const [prUrl, setPrUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [editPreviewUrl, setEditPreviewUrl] = useState('');
+  const [savingPreview, setSavingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [steps, setSteps] = useState<ProgressStep[]>([
     { id: 'analyze', label: 'Analyzing experiment requirements', status: 'pending' },
@@ -88,13 +93,19 @@ export const ExperimentProgressSteps = ({
         setStatus(newStatus);
         if (response.data.pr_url) setPrUrl(response.data.pr_url);
 
+        if (response.data.preview_url != null) {
+          setPreviewUrl(response.data.preview_url);
+          setEditPreviewUrl(response.data.preview_url || '');
+        }
         if (newStatus === 'active' || newStatus === 'pr_created' || newStatus === 'failed') {
           if (newStatus === 'active' || newStatus === 'pr_created') {
             setSteps((prev) => prev.map((step) => ({ ...step, status: 'completed' as const })));
           }
           clearInterval(interval);
           clearInterval(stepInterval);
-          setTimeout(() => onComplete(experimentId), 1000);
+          if (newStatus === 'active' || newStatus === 'failed') {
+            setTimeout(() => onComplete(experimentId), 1000);
+          }
         }
       } catch (err: any) {
         setError('Failed to fetch experiment status');
@@ -121,27 +132,73 @@ export const ExperimentProgressSteps = ({
     return <div className="w-4 h-4 rounded-full border-2 border-white/20 shrink-0" />;
   };
 
+  const handleSavePreviewUrl = async () => {
+    if (savingPreview) return;
+    setSavingPreview(true);
+    try {
+      await api.patch(`/api/experiments/${experimentId}/preview-url`, {
+        preview_url: editPreviewUrl.trim() || null,
+      });
+      setPreviewUrl(editPreviewUrl.trim() || null);
+      onExperimentUpdate?.({ preview_url: editPreviewUrl.trim() || undefined });
+    } catch (err) {
+      setError('Failed to save preview URL');
+    } finally {
+      setSavingPreview(false);
+    }
+  };
+
   if (status === 'active' || status === 'pr_created') {
     return (
-      <div className="p-4 text-center">
-        <div className="size-12 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-3">
-          <Check className="w-6 h-6 text-emerald-400" />
+      <div className="p-4 space-y-4">
+        <div className="text-center">
+          <div className="size-12 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-3">
+            <Check className="w-6 h-6 text-emerald-400" />
+          </div>
+          <h3 className="text-sm font-semibold text-white mb-1">PR Created!</h3>
+          <p className="text-xs text-slate-400 mb-3">
+            Open the PR, set your preview URL, then continue.
+          </p>
         </div>
-        <h3 className="text-sm font-semibold text-white mb-1">PR Created!</h3>
-        <p className="text-xs text-slate-400 mb-3">
-          Next: Add preview URL and merge the PR to continue.
-        </p>
+
         {prUrl && (
           <a
             href={prUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors text-xs font-medium"
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors text-sm font-medium break-all"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Open Pull Request
+            <ExternalLink className="w-4 h-4 shrink-0" />
+            <span className="truncate">{prUrl}</span>
           </a>
         )}
+
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-slate-400">Preview URL</label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={editPreviewUrl}
+              onChange={(e) => setEditPreviewUrl(e.target.value)}
+              placeholder="https://preview.example.com/..."
+              className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              onClick={handleSavePreviewUrl}
+              disabled={savingPreview || editPreviewUrl.trim() === (previewUrl ?? '')}
+              className="px-4 py-2 rounded-lg bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium shrink-0"
+            >
+              {savingPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+            </button>
+          </div>
+        </div>
+
+        <button
+          onClick={() => onComplete(experimentId)}
+          className="w-full py-2.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 font-medium text-sm"
+        >
+          Continue
+        </button>
       </div>
     );
   }

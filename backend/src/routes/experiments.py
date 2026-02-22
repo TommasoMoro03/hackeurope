@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import ProgrammingError
 from src.database import get_db
 from src.dependencies import get_current_active_user
 from src.models.user import User
@@ -234,6 +235,8 @@ def get_experiment_status(
     }
     if experiment.pr_url:
         result["pr_url"] = experiment.pr_url
+    if experiment.preview_url is not None:
+        result["preview_url"] = experiment.preview_url
     return result
 
 
@@ -270,9 +273,16 @@ def get_experiment_events(
     from src.models.event_tracked import EventTracked
 
     # Get all events for this experiment
-    events = db.query(EventTracked).filter(
-        EventTracked.experiment_id == experiment_id
-    ).order_by(EventTracked.created_at.desc()).all()
+    try:
+        events = db.query(EventTracked).filter(
+            EventTracked.experiment_id == experiment_id
+        ).order_by(EventTracked.created_at.desc()).all()
+    except ProgrammingError as e:
+        # Graceful fallback if DB schema is behind (missing event_tracked table)
+        db.rollback()
+        if "event_tracked" in str(e):
+            return []
+        raise
 
     # Format response
     return [
