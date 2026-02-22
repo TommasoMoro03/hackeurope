@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Zap, Loader2 } from 'lucide-react';
+import { api } from '@/lib/axios';
 import { cn } from '@/lib/utils';
+import type { Experiment } from '@/types/experiment';
 
 interface EventData {
   id: number;
@@ -18,48 +20,95 @@ interface EventData {
 }
 
 interface ExperimentDataCardProps {
-  experimentId: number;
+  experiment: Experiment;
+  projectId: number;
 }
 
-// Demo round – always use mock data for final pass
-const DEMO_MOCK_EVENTS: EventData[] = (() => {
-  const base = new Date();
-  const segments = [
-    { id: 1, name: 'Control' },
-    { id: 2, name: 'Variant B' },
-  ];
-  const eventTypes = ['btn_signup_click', 'page_view', 'cta_hover', 'scroll_80', 'form_submit'];
-  return Array.from({ length: 24 }, (_, i) => {
-    const seg = segments[i % 2];
-    const d = new Date(base);
-    d.setHours(d.getHours() - (23 - i));
-    return {
-      id: 1000 + i,
-      event_json: {
-        event_id: eventTypes[i % eventTypes.length],
-        segment_id: seg.id,
-        segment_name: seg.name,
-        experiment_id: 1,
-        project_id: 1,
-        timestamp: d.toISOString(),
-        user_id: `user_${String(100 + (i % 50)).padStart(3, '0')}`,
-      },
-      created_at: d.toISOString(),
-    };
-  }).reverse();
-})();
+const EVENT_TYPES = ['btn_signup_click', 'page_view', 'cta_hover', 'scroll_80', 'form_submit'];
+const WEBHOOK_URL = 'http://localhost:8001/webhook/event';
 
-export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) => {
-  const [events, setEvents] = useState<EventData[]>(DEMO_MOCK_EVENTS);
+export const ExperimentDataCard = ({ experiment, projectId }: ExperimentDataCardProps) => {
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [simulating, setSimulating] = useState(false);
+  const [simProgress, setSimProgress] = useState<{ sent: number; total: number } | null>(null);
 
-  const fetchEvents = () => {
-    setEvents([...DEMO_MOCK_EVENTS]);
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/api/experiments/${experiment.id}/events`);
+      setEvents(response.data);
+      setError(null);
+    } catch (err: unknown) {
+      setError('Failed to load event data');
+      console.error('Error fetching events:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    setEvents(DEMO_MOCK_EVENTS);
-  }, [experimentId]);
+    fetchEvents();
+  }, [experiment.id]);
+
+  const handleSimulate = async () => {
+    const segments = experiment.segments;
+    if (!segments || segments.length === 0) return;
+
+    const count = 60;
+    setSimulating(true);
+    setSimProgress({ sent: 0, total: count });
+
+    const baseTime = Date.now();
+
+    for (let i = 0; i < count; i++) {
+      // Distribute across segments weighted by percentage
+      let seg = segments[0];
+      const rand = Math.random();
+      let cumulative = 0;
+      for (const s of segments) {
+        cumulative += s.percentage;
+        if (rand < cumulative) { seg = s; break; }
+      }
+
+      const eventType = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
+      const userId = `sim_user_${String(Math.floor(Math.random() * 200) + 1).padStart(3, '0')}`;
+      const timestamp = new Date(baseTime - (count - i) * 60_000 * 2).toISOString();
+
+      const payload = {
+        event_id: eventType,
+        segment_id: seg.id,
+        segment_name: seg.name,
+        experiment_id: experiment.id,
+        project_id: projectId,
+        timestamp,
+        user_id: userId,
+        metadata: { simulated: true, index: i },
+      };
+
+      try {
+        await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // webhook might not be running locally, silently skip
+      }
+
+      setSimProgress({ sent: i + 1, total: count });
+
+      // small delay to avoid hammering
+      if (i % 10 === 9) await new Promise((r) => setTimeout(r, 80));
+    }
+
+    setSimulating(false);
+    setSimProgress(null);
+    // Refresh to show real data
+    fetchEvents();
+  };
 
   const hasData = events.length > 0;
 
@@ -75,22 +124,53 @@ export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) =>
         onClick={() => setExpanded((e) => !e)}
         className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-white/5 transition-colors"
       >
-        <span className="text-slate-500">{expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}</span>
+        <span className="text-slate-500">
+          {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        </span>
         <span className="text-[10px] font-mono text-slate-500 uppercase">Raw Data</span>
-        <span className="text-[10px] text-slate-600">{events.length}</span>
-        {hasData && (
+        <span className="text-[10px] text-slate-600">
+          {loading ? '…' : events.length}
+        </span>
+
+        <div className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {simulating && simProgress && (
+            <span className="text-[9px] text-primary font-mono">
+              {simProgress.sent}/{simProgress.total}
+            </span>
+          )}
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); fetchEvents(); }}
-            className="ml-auto text-[9px] text-primary hover:text-primary-glow"
+            onClick={handleSimulate}
+            disabled={simulating}
+            title="Simulate 60 events to local webhook"
+            className="flex items-center gap-1 text-[9px] text-yellow-400 hover:text-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Refresh
+            {simulating
+              ? <Loader2 className="w-3 h-3 animate-spin" />
+              : <Zap className="w-3 h-3" />
+            }
+            {simulating ? 'Simulating…' : 'Simulate'}
           </button>
-        )}
+          {hasData && !simulating && (
+            <button
+              type="button"
+              onClick={fetchEvents}
+              className="text-[9px] text-primary hover:text-primary-glow"
+            >
+              Refresh
+            </button>
+          )}
+        </div>
       </button>
+
       {expanded && (
         <div className="border-t border-white/5 px-2.5 py-2 max-h-[200px] overflow-y-auto scrollbar-hide">
-          {events.length > 0 && (
+          {loading && <p className="text-[10px] text-slate-500">Loading…</p>}
+          {error && <p className="text-[10px] text-red-400">{error}</p>}
+          {!loading && !error && events.length === 0 && (
+            <p className="text-[10px] text-slate-500">No events yet — hit Simulate to generate data</p>
+          )}
+          {!loading && !error && events.length > 0 && (
             <div className="space-y-1.5">
               {events.slice(0, 10).map((event) => (
                 <div

@@ -15,6 +15,7 @@ import type { ExperimentFormData } from '@/components/ExperimentForm';
 import type { Experiment } from '@/types/experiment';
 
 interface Project {
+  id: number;
   github_url: string;
 }
 
@@ -207,7 +208,7 @@ export const UnifiedExperimentWorkspace = ({
             onIterate={onIterate}
             isFinishing={isFinishing}
           />
-          <ExperimentDataCard experimentId={selectedExperiment.id} />
+          <ExperimentDataCard experiment={selectedExperiment} projectId={project?.id ?? 0} />
           {isPRFlow && onPRMerged && (
             <GlassPanel title="PR Ready" className="rounded-lg shrink-0">
               <CreationCompletePanel
