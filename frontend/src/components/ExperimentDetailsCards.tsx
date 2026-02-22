@@ -28,8 +28,6 @@ interface ExperimentDetailsCardsProps {
   onFinish?: () => void;
 }
 
-const labelStyles = 'block text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1.5';
-
 export const ExperimentDetailsCards = ({
   experiment,
   onExperimentUpdate,
@@ -137,44 +135,31 @@ export const ExperimentDetailsCards = ({
         </div>
       </GlassPanel>
 
-      {/* Control card - matches segment card during create */}
-      <GlassPanel title={controlSegment?.name ?? 'Control'} className="rounded-xl border-slate-700/50">
-        <div className="p-4 space-y-2">
-          <div className="flex justify-between items-center">
-            <span className={labelStyles}>Traffic</span>
-            <span className="text-sm font-mono text-primary-glow">
-              {((controlSegment?.percentage ?? 0) * 100).toFixed(1)}%
+      {/* Segments: A % | B % — minimal */}
+      <div className="grid grid-cols-2 gap-1.5">
+        <div
+          className="rounded-lg border border-white/5 bg-black/20 px-2.5 py-2"
+          title={controlSegment?.instructions}
+        >
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[10px] text-slate-500">A</span>
+            <span className="text-sm font-mono text-white tabular-nums">
+              {((controlSegment?.percentage ?? 0) * 100).toFixed(0)}%
             </span>
           </div>
-          <div>
-            <span className={labelStyles}>Instructions</span>
-            <p className="text-xs text-slate-400 whitespace-pre-wrap line-clamp-4">
-              {controlSegment?.instructions || '—'}
-            </p>
-          </div>
         </div>
-      </GlassPanel>
-
-      {/* Variant B card - matches segment card during create */}
-      <GlassPanel
-        title={variantSegment?.name ?? 'Variant B'}
-        className="rounded-xl border-primary/30 shadow-[0_0_30px_-5px_rgba(109,40,217,0.2)]"
-      >
-        <div className="p-4 space-y-2">
-          <div className="flex justify-between items-center">
-            <span className={labelStyles}>Traffic</span>
-            <span className="text-sm font-mono text-primary-glow">
-              {((variantSegment?.percentage ?? 0) * 100).toFixed(1)}%
+        <div
+          className="rounded-lg border border-primary/20 bg-black/20 px-2.5 py-2"
+          title={variantSegment?.instructions}
+        >
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[10px] text-slate-500">B</span>
+            <span className="text-sm font-mono text-primary-glow tabular-nums">
+              {((variantSegment?.percentage ?? 0) * 100).toFixed(0)}%
             </span>
           </div>
-          <div>
-            <span className={labelStyles}>Instructions</span>
-            <p className="text-xs text-slate-400 whitespace-pre-wrap line-clamp-4">
-              {variantSegment?.instructions || '—'}
-            </p>
-          </div>
         </div>
-      </GlassPanel>
+      </div>
 
       {showUrlPopup && (
         <>
