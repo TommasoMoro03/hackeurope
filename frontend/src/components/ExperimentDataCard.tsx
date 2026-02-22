@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { api } from '@/lib/axios';
 import { cn } from '@/lib/utils';
 
 interface EventData {
@@ -22,28 +21,44 @@ interface ExperimentDataCardProps {
   experimentId: number;
 }
 
+// Demo round – always use mock data for final pass
+const DEMO_MOCK_EVENTS: EventData[] = (() => {
+  const base = new Date();
+  const segments = [
+    { id: 1, name: 'Control' },
+    { id: 2, name: 'Variant B' },
+  ];
+  const eventTypes = ['btn_signup_click', 'page_view', 'cta_hover', 'scroll_80', 'form_submit'];
+  return Array.from({ length: 24 }, (_, i) => {
+    const seg = segments[i % 2];
+    const d = new Date(base);
+    d.setHours(d.getHours() - (23 - i));
+    return {
+      id: 1000 + i,
+      event_json: {
+        event_id: eventTypes[i % eventTypes.length],
+        segment_id: seg.id,
+        segment_name: seg.name,
+        experiment_id: 1,
+        project_id: 1,
+        timestamp: d.toISOString(),
+        user_id: `user_${String(100 + (i % 50)).padStart(3, '0')}`,
+      },
+      created_at: d.toISOString(),
+    };
+  }).reverse();
+})();
+
 export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) => {
-  const [events, setEvents] = useState<EventData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [events, setEvents] = useState<EventData[]>(DEMO_MOCK_EVENTS);
   const [expanded, setExpanded] = useState(false);
 
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/api/experiments/${experimentId}/events`);
-      setEvents(response.data);
-      setError(null);
-    } catch (err: unknown) {
-      setError('Failed to load event data');
-      console.error('Error fetching events:', err);
-    } finally {
-      setLoading(false);
-    }
+  const fetchEvents = () => {
+    setEvents([...DEMO_MOCK_EVENTS]);
   };
 
   useEffect(() => {
-    fetchEvents();
+    setEvents(DEMO_MOCK_EVENTS);
   }, [experimentId]);
 
   const hasData = events.length > 0;
@@ -62,9 +77,7 @@ export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) =>
       >
         <span className="text-slate-500">{expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}</span>
         <span className="text-[10px] font-mono text-slate-500 uppercase">Raw Data</span>
-        <span className="text-[10px] text-slate-600">
-          {loading ? '…' : events.length}
-        </span>
+        <span className="text-[10px] text-slate-600">{events.length}</span>
         {hasData && (
           <button
             type="button"
@@ -77,14 +90,7 @@ export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) =>
       </button>
       {expanded && (
         <div className="border-t border-white/5 px-2.5 py-2 max-h-[200px] overflow-y-auto scrollbar-hide">
-          {loading && <p className="text-[10px] text-slate-500">Loading…</p>}
-          {error && (
-            <p className="text-[10px] text-red-400">{error}</p>
-          )}
-          {!loading && !error && events.length === 0 && (
-            <p className="text-[10px] text-slate-500">No events yet</p>
-          )}
-          {!loading && !error && events.length > 0 && (
+          {events.length > 0 && (
             <div className="space-y-1.5">
               {events.slice(0, 10).map((event) => (
                 <div
