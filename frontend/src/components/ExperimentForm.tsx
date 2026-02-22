@@ -3,7 +3,7 @@ import { GlassPanel } from '@/components/ui/glass-panel';
 import { MovingBorder } from '@/components/ui/moving-border';
 import { TrafficSplitSlider } from '@/components/TrafficSplitSlider';
 import { cn } from '@/lib/utils';
-import { Send, Pencil } from 'lucide-react';
+import { Send, Pencil, Sparkles } from 'lucide-react';
 import { api } from '@/lib/axios';
 
 function useAutoResize(value: string) {
@@ -44,6 +44,17 @@ interface ExperimentFormProps {
 const DEFAULT_EXPERIMENT_NAME = 'New A/B Test';
 const DEFAULT_A_INSTRUCTIONS = 'Keep original layout. No changes. Baseline for comparison.';
 const DEFAULT_B_INSTRUCTIONS = 'Increase CTA contrast. Make button larger. Add urgency.';
+
+const TEMPLATE_DATA = {
+  name: 'CTA Visibility Increase',
+  description: 'Testing the impact of enhanced CTA design on user engagement and conversion rates.',
+  percentage: 80,
+  metrics: 'Proportion of clicks on hero button',
+  segments: [
+    { name: 'A', instructions: DEFAULT_A_INSTRUCTIONS, percentage: 0.5 },
+    { name: 'B', instructions: DEFAULT_B_INSTRUCTIONS, percentage: 0.5 },
+  ],
+};
 const inputStyles =
   'w-full px-3 py-1.5 rounded border border-white/10 bg-black/30 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all font-mono text-xs';
 const labelStyles = 'block text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1.5';
@@ -125,10 +136,34 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
     onSubmit({ ...form, name: nameToSubmit, metrics: metricsText });
   };
 
+  const handleUseTemplate = () => {
+    setForm({
+      ...form,
+      name: TEMPLATE_DATA.name,
+      description: TEMPLATE_DATA.description,
+      percentage: TEMPLATE_DATA.percentage,
+      metrics: TEMPLATE_DATA.metrics,
+      segments: TEMPLATE_DATA.segments,
+    });
+    validatePercentages(TEMPLATE_DATA.segments);
+  };
+
   const isCardsLayout = layout === 'cards';
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
+      {/* Use Template Button */}
+      <div className="flex justify-end mb-3">
+        <button
+          type="button"
+          onClick={handleUseTemplate}
+          className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 text-purple-300 hover:from-purple-600/30 hover:to-indigo-600/30 hover:border-purple-500/50 transition-all text-xs font-medium flex items-center gap-1.5"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          Use Template
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit} className={cn('flex-1 flex min-h-0 min-w-0', isCardsLayout ? 'flex-col gap-4' : 'gap-4')}>
         {/* Left / Top: Main config */}
         <aside className={isCardsLayout ? 'w-full' : 'w-72 shrink-0'}>
@@ -245,17 +280,9 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
         <main className={cn('flex min-w-0', isCardsLayout ? 'flex-col gap-4 md:flex-row' : 'flex-1 gap-4')}>
           {/* A card */}
           <div className="flex-1 flex flex-col min-w-0">
-            <GlassPanel showChrome={false} className="flex-1 flex flex-col overflow-hidden rounded-xl border-slate-700/50 relative">
-              <button
-                type="button"
-                onClick={() => handleSegmentChange(0, 'instructions', DEFAULT_A_INSTRUCTIONS)}
-                className="absolute top-2 left-3 text-[7rem] font-serif italic text-white/[0.07] leading-none select-none cursor-pointer hover:text-white/[0.12] transition-colors z-20"
-                aria-label="Auto-fill A instructions"
-              >
-                A
-              </button>
-              <div className="flex-1 overflow-y-auto scrollbar-hide p-3 pt-20 relative z-10">
-                <label className={labelStyles}>Instructions for AI</label>
+            <GlassPanel showChrome={false} className="flex-1 flex flex-col overflow-hidden rounded-xl border-slate-700/50">
+              <div className="flex-1 overflow-y-auto scrollbar-hide p-3">
+                <label className={labelStyles}>Segment A - Instructions for AI</label>
                 <textarea
                   ref={segAAutoResize.ref}
                   value={form.segments[0]?.instructions ?? ''}
@@ -273,18 +300,10 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
           <div className="flex-1 flex flex-col min-w-0">
             <GlassPanel
               showChrome={false}
-              className="flex-1 flex flex-col overflow-hidden rounded-xl border-primary/30 shadow-[0_0_30px_-5px_rgba(109,40,217,0.2)] relative"
+              className="flex-1 flex flex-col overflow-hidden rounded-xl border-primary/30 shadow-[0_0_30px_-5px_rgba(109,40,217,0.2)]"
             >
-              <button
-                type="button"
-                onClick={() => handleSegmentChange(1, 'instructions', DEFAULT_B_INSTRUCTIONS)}
-                className="absolute top-2 left-3 text-[7rem] font-serif italic text-primary/[0.1] leading-none select-none cursor-pointer hover:text-primary/[0.16] transition-colors z-20"
-                aria-label="Auto-fill B instructions"
-              >
-                B
-              </button>
-              <div className="flex-1 overflow-y-auto scrollbar-hide p-3 pt-20 relative z-10">
-                <label className={labelStyles}>Instructions for AI</label>
+              <div className="flex-1 overflow-y-auto scrollbar-hide p-3">
+                <label className={labelStyles}>Segment B - Instructions for AI</label>
                 <textarea
                   ref={segBAutoResize.ref}
                   value={form.segments[1]?.instructions ?? ''}
