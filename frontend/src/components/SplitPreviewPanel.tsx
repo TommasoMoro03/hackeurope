@@ -25,12 +25,12 @@ interface SplitPreviewPanelProps {
 
 export const SplitPreviewPanel = ({
   mode,
-  controlLabel = 'Original Baseline',
-  variantLabel = 'AI Generated',
+  controlLabel = 'A',
+  variantLabel = 'B',
   controlUrl,
   variantUrl,
-  controlData = 'CR: 2.4%',
-  variantData = '+12.4% Lift',
+  controlData,
+  variantData,
 }: SplitPreviewPanelProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('mobile');
   const [expanded, setExpanded] = useState<ExpandedPane>(null);
@@ -64,7 +64,7 @@ export const SplitPreviewPanel = ({
   }: {
     type: 'control' | 'variant';
     label: string;
-    data: string;
+    data?: string;
     isLoading: boolean;
     hasData: boolean;
     src?: string;
@@ -98,14 +98,16 @@ export const SplitPreviewPanel = ({
             {label}
           </span>
         </div>
-        <span
-          className={cn(
-            'font-mono text-xs',
-            type === 'control' ? 'text-slate-500' : 'text-emerald-400'
-          )}
-        >
-          {data}
-        </span>
+        {data && (
+          <span
+            className={cn(
+              'font-mono text-xs',
+              type === 'control' ? 'text-slate-500' : 'text-emerald-400'
+            )}
+          >
+            {data}
+          </span>
+        )}
       </div>
       <div
         className={cn(
@@ -359,7 +361,7 @@ export const SplitPreviewPanel = ({
         </div>
       )}
 
-      <div className="flex-1 flex gap-4 min-h-0 min-w-0 overflow-x-auto justify-center">
+      <div className="flex-1 flex gap-4 min-h-0 min-w-0 overflow-x-auto scrollbar-hide justify-center">
         <PreviewPane
           type="control"
           label={controlLabel}

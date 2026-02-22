@@ -61,7 +61,7 @@ export const ExperimentMergePR = ({
 
   return (
     <div className="flex gap-6 min-h-0 flex-1 overflow-hidden">
-      <aside className="w-[340px] shrink-0 flex flex-col gap-4 overflow-y-auto">
+      <aside className="w-[340px] shrink-0 flex flex-col gap-4 overflow-y-auto scrollbar-hide">
       {/* PR Created - main card */}
       <div className="glass-panel-vibe rounded-xl border border-white/10 p-6">
         <div className="flex items-center gap-3 mb-4">

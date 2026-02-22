@@ -3,6 +3,7 @@ import { ExperimentForm } from '@/components/ExperimentForm';
 import { ExperimentDetailsCards } from '@/components/ExperimentDetailsCards';
 import { ExperimentDataCard } from '@/components/ExperimentDataCard';
 import { ExperimentProgressSteps } from '@/components/ExperimentProgressSteps';
+import { ExperimentPRFlowCards } from '@/components/ExperimentPRFlowCards';
 import { SplitPreviewPanel } from '@/components/SplitPreviewPanel';
 import type { ExperimentFormData } from '@/components/ExperimentForm';
 
@@ -41,9 +42,12 @@ interface UnifiedExperimentWorkspaceProps {
   selectedExperiment?: Experiment | null;
   onExperimentUpdate?: (updates: Partial<Experiment>) => void;
   onFinish?: () => void;
+  onPRMerged?: () => void;
   project?: Project | null;
   percentageError?: string | null;
 }
+
+const PR_STATUSES = ['started', 'implementing', 'pr_created'];
 
 export const UnifiedExperimentWorkspace = ({
   mode,
@@ -53,6 +57,7 @@ export const UnifiedExperimentWorkspace = ({
   selectedExperiment,
   onExperimentUpdate,
   onFinish,
+  onPRMerged,
   percentageError,
 }: UnifiedExperimentWorkspaceProps) => {
   const renderLeftCards = () => {
@@ -69,13 +74,13 @@ export const UnifiedExperimentWorkspace = ({
     if (mode === 'loading' && creatingExperiment) {
       return (
         <>
-          <GlassPanel title="Test Configuration" className="rounded-xl">
-            <div className="p-4">
-              <h3 className="text-sm font-semibold text-white">{creatingExperiment.name}</h3>
-              <p className="text-xs text-slate-500 mt-1">Creating experiment...</p>
+          <GlassPanel title="Test Configuration" className="rounded-lg">
+            <div className="p-3">
+              <h3 className="text-sm font-semibold text-white truncate">{creatingExperiment.name}</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">Creating experiment...</p>
             </div>
           </GlassPanel>
-          <GlassPanel title="Progress" className="rounded-xl flex-1 min-h-0 overflow-hidden">
+          <GlassPanel title="Progress" className="rounded-lg flex-1 min-h-0 overflow-hidden">
             <ExperimentProgressSteps
               experimentId={creatingExperiment.id}
               experimentName={creatingExperiment.name}
@@ -88,6 +93,7 @@ export const UnifiedExperimentWorkspace = ({
     }
 
     if (mode === 'experiment' && selectedExperiment) {
+      const isPRFlow = PR_STATUSES.includes(selectedExperiment.status);
       return (
         <>
           <ExperimentDetailsCards
@@ -95,6 +101,13 @@ export const UnifiedExperimentWorkspace = ({
             onExperimentUpdate={onExperimentUpdate}
             onFinish={onFinish}
           />
+          {isPRFlow && onPRMerged && (
+            <ExperimentPRFlowCards
+              experiment={selectedExperiment}
+              onMerged={onPRMerged}
+              onExperimentUpdate={onExperimentUpdate}
+            />
+          )}
           <ExperimentDataCard experimentId={selectedExperiment.id} />
         </>
       );
@@ -108,8 +121,8 @@ export const UnifiedExperimentWorkspace = ({
       return (
         <SplitPreviewPanel
           mode="loading"
-          controlLabel="Original Baseline"
-          variantLabel="AI Generated"
+          controlLabel="A"
+          variantLabel="B"
         />
       );
     }
@@ -159,13 +172,13 @@ export const UnifiedExperimentWorkspace = ({
   }
 
   return (
-    <div className="flex flex-1 gap-4 min-h-0 min-w-0">
-      <aside className="w-[340px] shrink-0 flex flex-col gap-4 overflow-y-auto">
+    <div className="flex flex-1 gap-3 min-h-0 min-w-0">
+      <aside className="w-[280px] shrink-0 flex flex-col gap-3 overflow-y-auto scrollbar-hide">
         {renderLeftCards()}
       </aside>
 
       {showSplitPreview && (
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden min-h-[400px]">
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden min-h-[320px]">
           {renderRightPreview()}
         </main>
       )}

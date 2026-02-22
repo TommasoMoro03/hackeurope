@@ -129,7 +129,7 @@ export const ExperimentProgressSteps = ({
         </div>
         <h3 className="text-sm font-semibold text-white mb-1">PR Created!</h3>
         <p className="text-xs text-slate-400 mb-3">
-          Review and merge the pull request to activate the experiment.
+          Next: Add preview URL and merge the PR to continue.
         </p>
         {prUrl && (
           <a

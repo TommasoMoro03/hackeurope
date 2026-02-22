@@ -62,7 +62,7 @@ function DashboardSidebarContent<T extends ExperimentItem>({
 
   return (
     <>
-        <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
+        <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto scrollbar-hide">
           {/* Logo */}
           <div className="px-3 pb-4">
             <Link

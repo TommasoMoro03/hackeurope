@@ -4,6 +4,7 @@ import { MovingBorder } from '@/components/ui/moving-border';
 import { TrafficSplitSlider } from '@/components/TrafficSplitSlider';
 import { cn } from '@/lib/utils';
 import { Send, Pencil } from 'lucide-react';
+import { api } from '@/lib/axios';
 
 interface Segment {
   name: string;
@@ -28,6 +29,8 @@ interface ExperimentFormProps {
 }
 
 const DEFAULT_EXPERIMENT_NAME = 'New A/B Test';
+const DEFAULT_A_INSTRUCTIONS = 'Keep original layout. No changes. Baseline for comparison.';
+const DEFAULT_B_INSTRUCTIONS = 'Increase CTA contrast. Make button larger. Add urgency.';
 const inputStyles =
   'w-full px-3 py-1.5 rounded border border-white/10 bg-black/30 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all font-mono text-xs';
 const labelStyles = 'block text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1.5';
@@ -48,6 +51,33 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
   const [percentageErrorInternal, setPercentageError] = useState<string | null>(null);
   const percentageError = percentageErrorProp ?? percentageErrorInternal;
   const [isEditingName, setIsEditingName] = useState(false);
+  const [isGeneratingName, setIsGeneratingName] = useState(false);
+
+  const generateName = async () => {
+    const desc = form.description.trim();
+    const control = form.segments[0]?.instructions?.trim() ?? '';
+    const variant = form.segments[1]?.instructions?.trim() ?? '';
+    if (!desc && !control && !variant) return;
+    // Only overwrite if name is still default (user hasn't customized)
+    const nameIsDefault = !form.name.trim() || form.name.trim() === DEFAULT_EXPERIMENT_NAME;
+    if (!nameIsDefault) return;
+
+    setIsGeneratingName(true);
+    try {
+      const { data } = await api.post<{ name: string }>('/api/experiments/generate-name', {
+        description: desc,
+        control_instructions: control,
+        variant_instructions: variant,
+      });
+      if (data?.name?.trim()) {
+        setForm((prev) => ({ ...prev, name: data.name.trim() }));
+      }
+    } catch {
+      // Fallback to default, no UX disruption
+    } finally {
+      setIsGeneratingName(false);
+    }
+  };
 
   const handleSegmentChange = (index: number, field: 'instructions' | 'percentage', value: string | number) => {
     const newSegments = [...form.segments];
@@ -85,7 +115,7 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
         {/* Left / Top: Main config */}
         <aside className={isCardsLayout ? 'w-full' : 'w-72 shrink-0'}>
           <GlassPanel title="Test Configuration" className="flex flex-col h-full overflow-hidden rounded-xl">
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <div className="flex-1 overflow-y-auto scrollbar-hide p-3 space-y-3">
               <div>
                 <label className={labelStyles}>Experiment Name</label>
                 {isEditingName ? (
@@ -125,11 +155,15 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onBlur={generateName}
                   rows={3}
                   placeholder="Describe the experiment goals..."
                   className={cn(inputStyles, 'resize-none min-h-[4rem]')}
                   required
                 />
+                {isGeneratingName && (
+                  <span className="text-[10px] text-slate-500">Generating name…</span>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -194,19 +228,22 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
           {/* A card */}
           <div className="flex-1 flex flex-col min-w-0">
             <GlassPanel showChrome={false} className="flex-1 flex flex-col overflow-hidden rounded-xl border-slate-700/50 relative">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute top-2 left-3 text-[7rem] font-serif italic text-white/[0.07] leading-none select-none"
+              <button
+                type="button"
+                onClick={() => handleSegmentChange(0, 'instructions', DEFAULT_A_INSTRUCTIONS)}
+                className="absolute top-2 left-3 text-[7rem] font-serif italic text-white/[0.07] leading-none select-none cursor-pointer hover:text-white/[0.12] transition-colors z-20"
+                aria-label="Auto-fill A instructions"
               >
                 A
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 pt-20 relative z-10">
+              </button>
+              <div className="flex-1 overflow-y-auto scrollbar-hide p-3 pt-20 relative z-10">
                 <label className={labelStyles}>Instructions for AI</label>
                 <textarea
                   value={form.segments[0]?.instructions ?? ''}
                   onChange={(e) => handleSegmentChange(0, 'instructions', e.target.value)}
+                  onBlur={generateName}
                   rows={3}
-                  placeholder="Keep original layout. No changes. Baseline for comparison."
+                  placeholder={DEFAULT_A_INSTRUCTIONS}
                   className={cn(inputStyles, 'resize-none min-h-[4rem] mt-1.5')}
                   required
                 />
@@ -220,19 +257,22 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
               showChrome={false}
               className="flex-1 flex flex-col overflow-hidden rounded-xl border-primary/30 shadow-[0_0_30px_-5px_rgba(109,40,217,0.2)] relative"
             >
-              <div
-                aria-hidden
-                className="pointer-events-none absolute top-2 left-3 text-[7rem] font-serif italic text-primary/[0.1] leading-none select-none"
+              <button
+                type="button"
+                onClick={() => handleSegmentChange(1, 'instructions', DEFAULT_B_INSTRUCTIONS)}
+                className="absolute top-2 left-3 text-[7rem] font-serif italic text-primary/[0.1] leading-none select-none cursor-pointer hover:text-primary/[0.16] transition-colors z-20"
+                aria-label="Auto-fill B instructions"
               >
                 B
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 pt-20 relative z-10">
+              </button>
+              <div className="flex-1 overflow-y-auto scrollbar-hide p-3 pt-20 relative z-10">
                 <label className={labelStyles}>Instructions for AI</label>
                 <textarea
                   value={form.segments[1]?.instructions ?? ''}
                   onChange={(e) => handleSegmentChange(1, 'instructions', e.target.value)}
+                  onBlur={generateName}
                   rows={3}
-                  placeholder="Increase CTA contrast. Make button larger. Add urgency."
+                  placeholder={DEFAULT_B_INSTRUCTIONS}
                   className={cn(inputStyles, 'resize-none min-h-[4rem] mt-1.5')}
                   required
                 />

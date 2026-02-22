@@ -63,7 +63,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
   const paneWidth = viewMode === 'mobile' ? MOBILE_VIEWPORT : DESKTOP_PANE_DISPLAY;
 
   const expandedSrc = expanded === 'control' ? controlSrc : expanded === 'variant' ? variantSrc : undefined;
-  const expandedLabel = expanded === 'control' ? 'Original Baseline' : expanded === 'variant' ? 'AI Generated' : '';
+  const expandedLabel = expanded === 'control' ? (experiment.segments?.[0]?.name ?? 'A') : expanded === 'variant' ? (experiment.segments?.[1]?.name ?? 'B') : '';
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -161,7 +161,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
             <p className="text-xs text-slate-500">Define parameters for AI generation</p>
             <p className="text-[10px] text-slate-600 mt-1 font-mono">{experiment.name}</p>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <div className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-6">
             {/* Preview URLs */}
             <div className="space-y-3">
               <label className="text-xs font-mono text-slate-400 uppercase block">Preview URLs</label>
@@ -325,7 +325,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
           </div>
         </div>
 
-        <div className="flex-1 flex gap-4 min-h-0 min-w-0 overflow-x-auto justify-center">
+        <div className="flex-1 flex gap-4 min-h-0 min-w-0 overflow-x-auto scrollbar-hide justify-center">
           {/* Control (Original) */}
           <div
             className="flex flex-col min-w-0 flex-1"
@@ -339,9 +339,8 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                 <span className="px-2 py-0.5 rounded bg-slate-800 text-[10px] font-mono text-slate-300 border border-slate-700">
                   CONTROL
                 </span>
-                <span className="text-sm font-medium text-slate-300">Original Baseline</span>
+                <span className="text-sm font-medium text-slate-300">{experiment.segments?.[0]?.name ?? 'A'}</span>
               </div>
-              <span className="font-mono text-xs text-slate-500">CR: 2.4%</span>
             </div>
             <div
               className={cn(
@@ -425,9 +424,8 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                   <Sparkles className="w-3 h-3" />
                   VARIANT B
                 </span>
-                <span className="text-sm font-medium text-white">AI Generated</span>
+                <span className="text-sm font-medium text-white">{experiment.segments?.[1]?.name ?? 'B'}</span>
               </div>
-              <span className="font-mono text-xs text-emerald-400">+12.4% Lift</span>
             </div>
             <div
               className={cn(

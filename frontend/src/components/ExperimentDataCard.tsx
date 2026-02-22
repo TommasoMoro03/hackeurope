@@ -46,7 +46,7 @@ export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) =>
 
   return (
     <GlassPanel title="Raw Data" className="rounded-xl flex-1 min-h-0 overflow-hidden">
-      <div className="p-4 overflow-y-auto max-h-[300px]">
+      <div className="p-4 overflow-y-auto scrollbar-hide max-h-[300px]">
         {loading && (
           <div className="flex items-center justify-center py-8">
             <p className="text-xs text-slate-500">Loading event data...</p>
@@ -73,7 +73,7 @@ export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) =>
                 Refresh
               </button>
             </div>
-            <div className="space-y-2 overflow-x-auto">
+            <div className="space-y-2 overflow-x-auto scrollbar-hide">
               {events.slice(0, 10).map((event) => (
                 <div
                   key={event.id}

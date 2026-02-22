@@ -27,7 +27,7 @@ interface ExperimentsSidebarProps {
 
 export const ExperimentsSidebar = ({ experiments, selectedExperiment, onSelectExperiment }: ExperimentsSidebarProps) => {
   return (
-    <div className="w-56 md:w-64 shrink-0 border-r border-white/5 bg-black/20 overflow-y-auto">
+    <div className="w-56 md:w-64 shrink-0 border-r border-white/5 bg-black/20 overflow-y-auto scrollbar-hide">
       <div className="p-4">
         <h2 className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-slate-500 mb-4">
           <FlaskConical className="w-4 h-4" />

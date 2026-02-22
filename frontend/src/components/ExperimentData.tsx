@@ -82,7 +82,7 @@ export const ExperimentData = ({ experimentId }: ExperimentDataProps) => {
       </div>
 
       {/* Events Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scrollbar-hide">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -124,7 +124,7 @@ export const ExperimentData = ({ experimentId }: ExperimentDataProps) => {
                       <summary className="text-blue-600 hover:text-blue-700">
                         View
                       </summary>
-                      <pre className="mt-2 text-xs bg-gray-50 p-2 rounded overflow-auto max-w-xs">
+                      <pre className="mt-2 text-xs bg-gray-50 p-2 rounded overflow-auto scrollbar-hide max-w-xs">
                         {JSON.stringify(event.event_json.metadata, null, 2)}
                       </pre>
                     </details>

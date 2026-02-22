@@ -34,6 +34,12 @@ class ExperimentCreate(ExperimentBase):
     segments: List[SegmentCreate]
 
 
+class GenerateNameRequest(BaseModel):
+    description: str = ""
+    control_instructions: str = ""
+    variant_instructions: str = ""
+
+
 class ExperimentPreviewUrlUpdate(BaseModel):
     preview_url: Optional[str] = None
 

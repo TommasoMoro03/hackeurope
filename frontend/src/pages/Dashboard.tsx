@@ -10,7 +10,6 @@ import { DashboardNav } from '@/components/DashboardNav';
 import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { UnifiedExperimentWorkspace } from '@/components/UnifiedExperimentWorkspace';
 import { ExperimentFinishing } from '@/components/ExperimentFinishing';
-import { ExperimentMergePR } from '@/components/ExperimentMergePR';
 import type { ExperimentFormData } from '@/components/ExperimentForm';
 
 interface Project {
@@ -235,49 +234,33 @@ export const Dashboard = () => {
           onToggleRepoPopup={() => setShowRepoPopup(!showRepoPopup)}
           onLogout={logout}
         />
-        <div className="flex-1 relative z-20 flex flex-col min-h-0 overflow-y-auto p-6">
+        <div className="flex-1 relative z-20 flex flex-col min-h-0 overflow-y-auto scrollbar-hide p-6">
           {error && (
             <div className="mb-4 glass-panel-vibe border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
               {error}
             </div>
           )}
 
-          {(() => {
-            const showMergePR = selectedExperiment &&
-              ['started', 'implementing', 'pr_created'].includes(selectedExperiment.status);
-            if (showMergePR) {
-              return (
-                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <ExperimentMergePR
-                    experiment={selectedExperiment!}
-                    onMerged={handlePRMerged}
-                    onExperimentUpdate={handleExperimentUpdate}
-                  />
-                </div>
-              );
-            }
-            return (
-              <>
-                <UnifiedExperimentWorkspace
-                  mode={creatingExperiment ? 'loading' : selectedExperiment ? 'experiment' : 'planning'}
-                  onCreateExperiment={handleCreateExperiment}
-                  creatingExperiment={creatingExperiment}
-                  onCreationComplete={handleExperimentComplete}
-                  selectedExperiment={selectedExperiment ?? undefined}
-                  onExperimentUpdate={handleExperimentUpdate}
-                  onFinish={handleFinishExperiment}
-                  project={project}
-                />
-                {finishingExperiment && (
-                  <ExperimentFinishing
-                    experimentId={finishingExperiment.id}
-                    experimentName={finishingExperiment.name}
-                    onComplete={handleFinishingComplete}
-                  />
-                )}
-              </>
-            );
-          })()}
+          <>
+            <UnifiedExperimentWorkspace
+              mode={creatingExperiment ? 'loading' : selectedExperiment ? 'experiment' : 'planning'}
+              onCreateExperiment={handleCreateExperiment}
+              creatingExperiment={creatingExperiment}
+              onCreationComplete={handleExperimentComplete}
+              selectedExperiment={selectedExperiment ?? undefined}
+              onExperimentUpdate={handleExperimentUpdate}
+              onFinish={handleFinishExperiment}
+              onPRMerged={handlePRMerged}
+              project={project}
+            />
+            {finishingExperiment && (
+              <ExperimentFinishing
+                experimentId={finishingExperiment.id}
+                experimentName={finishingExperiment.name}
+                onComplete={handleFinishingComplete}
+              />
+            )}
+          </>
         </div>
       </div>
     </AppBackground>

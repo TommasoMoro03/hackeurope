@@ -74,8 +74,8 @@ export const ExperimentDetailsCards = ({
   return (
     <>
       {/* Config card - matches Test Configuration during create */}
-      <GlassPanel title="Test Configuration" className="rounded-xl">
-        <div className="p-4 space-y-3">
+      <GlassPanel title="Test Configuration" className="rounded-lg">
+        <div className="p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-white truncate">{experiment.name}</h3>
             <span

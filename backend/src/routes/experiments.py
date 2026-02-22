@@ -7,7 +7,7 @@ from src.models.project import Project
 from src.models.experiment import Experiment
 from src.models.segment import Segment
 from src.models.insight_data import InsightData
-from src.schemas.experiment import ExperimentCreate, ExperimentResponse, ExperimentPreviewUrlUpdate, SegmentPercentagesUpdate
+from src.schemas.experiment import ExperimentCreate, ExperimentResponse, ExperimentPreviewUrlUpdate, SegmentPercentagesUpdate, GenerateNameRequest
 from src.services.experiment_implementation_service import implement_experiment_sync
 from typing import List
 import threading
@@ -15,6 +15,50 @@ import json
 import secrets
 
 router = APIRouter(prefix="/experiments", tags=["Experiments"])
+
+
+@router.post("/generate-name")
+def generate_experiment_name(
+    body: GenerateNameRequest,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Generate a short experiment name (3-4 words) from description and segment instructions.
+    """
+    description = body.description or ""
+    control_instructions = body.control_instructions or ""
+    variant_instructions = body.variant_instructions or ""
+
+    context = description
+    if control_instructions or variant_instructions:
+        context = f"{description}\nControl: {control_instructions}\nVariant: {variant_instructions}".strip()
+
+    if not context.strip():
+        return {"name": "New A/B Test"}
+
+    try:
+        from src.services.llm_service import get_llm_service
+        llm = get_llm_service()
+        prompt = f"""Based on this experiment description, suggest a short name (3-4 words max). Be concise and descriptive.
+
+Description:
+{context}
+
+Reply with ONLY the name, nothing else. No quotes. Max 4 words."""
+        name = llm.call_llm_sync(
+            prompt=prompt,
+            system_message="You suggest short, descriptive experiment names. Reply with only the name, 3-4 words.",
+            temperature=0.7,
+            max_tokens=20
+        )
+        name = (name or "").strip()
+        if not name:
+            return {"name": "New A/B Test"}
+        # Enforce max 4 words
+        words = name.split()[:4]
+        return {"name": " ".join(words)}
+    except Exception:
+        return {"name": "New A/B Test"}
 
 
 @router.post("", response_model=ExperimentResponse)
