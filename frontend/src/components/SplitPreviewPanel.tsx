@@ -36,8 +36,6 @@ interface SplitPreviewPanelProps {
   onPreviewUrlSave?: (url: string) => Promise<void>;
 }
 
-const truncate = (s: string, len: number) =>
-  s.length <= len ? s : s.slice(0, len).trim() + '…';
 
 export const SplitPreviewPanel = ({
   mode,
@@ -110,8 +108,8 @@ export const SplitPreviewPanel = ({
 
   const PreviewPane = ({
     type,
-    label,
-    data,
+    label: _label,
+    data: _data,
     isLoading,
     hasData,
     src,

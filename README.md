@@ -1,115 +1,114 @@
-# HackEurope
+# Pryo — A/B Testing Automation
 
-Deployed version: https://hackeurope-frontend-production.up.railway.app/
+> Ship experiments, not spreadsheets.
 
-## Product
+Deployed: https://hackeurope-frontend-production.up.railway.app/
 
-### Why
+---
 
-Shipping an MVP is fast. Learning what actually works is not.
+## What is Pryo?
 
-The real bottleneck for startups today isn’t building, it’s running structured experiments, extracting insights, and iterating with clarity. Most teams still rely on fragmented tools and manual analysis.
+Pryo automates the full A/B experimentation cycle for fast-moving teams:
 
-We believe experimentation should be as automatic as deployment.
+1. **Describe** — Write a plain-text hypothesis. Pryo structures it into a trackable experiment with segments and metrics.
+2. **Implement** — Pryo's AI agent reads your codebase, writes the experiment code, and opens a pull request. No manual integration.
+3. **Simulate & Analyze** — Generate realistic event data instantly. Claude LLM analyzes results and produces charts, insights, and a winner recommendation.
+4. **Iterate** — Pryo suggests the next best experiment based on what you learned.
 
-### What
+---
 
-**Pryo** is an A/B testing automation platform for fast-moving teams.
+## Architecture
 
-It helps you launch experiments, collect data, extract insights, and decide what to test next, turning experimentation into a continuous feedback loop.
+Three services share one PostgreSQL database:
 
-### How
+| Service | Port | Role |
+|---|---|---|
+| **Backend** | 8000 | FastAPI — auth, experiments, AI agent, analysis |
+| **Frontend** | 5173 | React dashboard |
+| **PostgreSQL** | 5432 | Single shared database |
 
-Pryo automates the entire experimentation cycle:
+> The webhook listener (port 8001) is optional for production event ingestion. For simulation and testing, events are written directly to the main database.
 
-1. **Generate experiments from plain text**  
-   Describe the hypothesis or idea you want to test. Pryo structures it into trackable experiment.
+---
 
-2. **Integrate directly with your codebase**  
-   Pryo connects to your repository and automatically opens a pull request with the experiment implementation.
+## Data Flow
 
-3. **Collect and analyze data automatically**  
-   During the experiment, Pryo gathers relevant metrics and structures results in a clear, decision-oriented format.
+### Experiment Lifecycle
 
-4. **Close the loop**  
-   Once the experiment concludes, Pryo generates actionable insights and suggests the next best experiment to run.
+```
+User input → POST /api/experiments
+                ↓
+        status: "started"
+                ↓
+        GitHubAgentService (Claude AI)
+          Phase 1: Plan — detect framework, list files
+          Phase 2: Read — read relevant files, detect code style
+          Phase 3: Write — generate segment code, open PR
+                ↓
+        status: "pr_created"  +  pr_url
+                ↓
+        User merges PR → POST /activate
+                ↓
+        status: "active"
+                ↓
+        Events tracked (real or simulated)
+                ↓
+        POST /finish → ExperimentAnalysisService (Claude LLM)
+          - Reads EventTracked rows
+          - Generates plots (bar/line/pie) + insights
+          - Determines winner segment
+          - Saves to InsightData
+                ↓
+        status: "finished"  →  Results panel
+```
 
-## Technology
+### Simulate Flow (non-destructive)
 
-### Overview
-Our project is made up of three services. Everything is persistent
-and saved in our Postres DB.
+```
+POST /api/experiments/{id}/simulate
+  ├── Inserts EventTracked rows directly into DB (120 events, stable user→segment assignment)
+  ├── Runs ExperimentAnalysisService immediately
+  ├── Saves InsightData
+  └── Returns { sent, event_ids_used, analysis_done }
+Frontend: shows raw events + full results panel (charts, winner, insights)
+```
 
-- **Backend** (port 8000) - FastAPI with auth
-- **Frontend** (port 5173) - React dashboard
-- **Webhook Listener** (port 8001) - Event ingestion
-- **PostgreSQL** (port 5432) - Database
+### GitHub AI Agent (Phase Architecture)
 
-### Technical Workflow
+```
+Phase 1 — Plan  (1 Claude call, list_files tool)
+  └─ Identify framework, entry point, routing pattern, target files
 
-#### Core Experiment Flow
+Phase 2 — Read  (1 Claude call, read_multiple_files tool)
+  └─ Read target files, detect code style (indentation, quotes, CSS approach, exports)
 
-1. **Experiment Creation**
-   - User submits experiment details (name, description, segments, metrics) via Frontend
-   - Frontend → `POST /api/experiments` → Backend
-   - Backend creates experiment record with `status: 'started'`
-   - Backend queues PR generation via `GitHubAgentService`
-   - Claude generates code implementation and opens PR on user's repository
-   - Backend updates experiment `status: 'pr_created'` and stores `pr_url`
+Phase 3 — Write  (1 Claude call, write_file + flush_writes + compare_changes tools)
+  └─ Generate experiment files matching detected style
+  └─ Inject trackEvent() calls with preview hash routing (#test1 / #test2)
 
-2. **Experiment Activation**
-   - User merges PR and sets preview URL in Frontend
-   - Frontend → `POST /api/experiments/{id}/activate` → Backend
-   - Backend updates `status: 'active'` and experiment goes live
-   - User's application sends tracking events to Webhook Listener
+Server-side PR creation
+  └─ Create branch, commit files via GitHub API, open PR
+```
 
-3. **Event Tracking**
-   - User's deployed app → `POST /webhook/event` → Webhook Listener (port 8001)
-   - Webhook Listener validates and stores events in PostgreSQL
-   - Frontend polls `GET /api/experiments/{id}/events` to display real-time data
+---
 
-4. **Experiment Completion**
-   - Frontend → `POST /api/experiments/{id}/finish` → Backend
-   - Backend updates `status: 'finishing'` and queues analysis job
-   - `AnalysisService` uses Claude to analyze results, generate plots and insights
-   - Backend stores analysis and updates `status: 'finished'`
-   - Frontend polls `GET /api/experiments/{id}/analysis` to display results
+## Key Tables
 
-5. **Iteration Loop**
-   - Frontend → `POST /api/experiments/{id}/iterate` → Backend
-   - `ExperimentIterationService` uses Claude to analyze completed experiment
-   - Claude generates next experiment suggestion based on insights
-   - Backend returns suggestion (rationale, hypothesis, segments)
-   - User accepts → Frontend pre-fills form → New experiment created
+| Table | Purpose |
+|---|---|
+| `experiment` | Core record — status, pr_url, preview_url, segments, computation_logic |
+| `segment` | A/B segments with traffic percentage and implementation instructions |
+| `event_tracked` | Raw events (real or simulated) keyed by experiment + segment |
+| `insight_data` | LLM analysis results — plots (Chart.js JSON), insights, winner |
 
-#### GitHub Integration
-
-Pryo connects directly to your GitHub repository through OAuth:
-- User authenticates via GitHub OAuth (`/api/github/authorize` → GitHub → `/api/github/callback`)
-- Backend stores encrypted GitHub token and repository metadata
-- On experiment creation, `GitHubAgentService` uses Claude to:
-  - Analyze repository structure (framework detection, routing patterns)
-  - Generate complete implementation files for all experiment segments
-  - Create feature branch and commit changes
-  - Open pull request with experiment code
-- User reviews PR, merges when ready, experiment goes live
-
-#### Polling Architecture
-
-Pryo uses a polling-based pattern for async operations:
-- **Job Creation**: Frontend triggers long-running operation (experiment creation, analysis, iteration)
-- **Status Field**: Backend creates record with `status` field (`started`, `implementing`, `pr_created`, `active`, `finishing`, `finished`)
-- **Frontend Polling**: React components poll status endpoint every 2 seconds (e.g., `GET /api/experiments/{id}/status`)
-- **Progressive Updates**: Backend updates status as job progresses; Frontend shows loading states and step indicators
-- **Completion**: When status reaches terminal state (`pr_created`, `finished`), Frontend stops polling and displays results
-
+---
 
 ## Run Locally
 
-**Terminal 1 - PostgreSQL:**
+**1. PostgreSQL**
 ```bash
 docker run -d \
-  --name hackeurope_postgres \
+  --name pryo_postgres \
   -e POSTGRES_USER=hackeurope_user \
   -e POSTGRES_PASSWORD=hackeurope_password \
   -e POSTGRES_DB=hackeurope_db \
@@ -117,33 +116,73 @@ docker run -d \
   postgres:15-alpine
 ```
 
-**Terminal 2 - Backend:**
+**2. Backend** (Terminal 1)
 ```bash
-cd backend && source .venv/bin/activate && uvicorn main:app --reload --port 8000
+cd backend
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+
+pip install -r requirements.txt
+cp .env.example .env   # fill in API keys
+python -m alembic upgrade head
+python -m uvicorn main:app --reload --port 8000
 ```
 
-**Terminal 3 - Webhook Listener:**
+**3. Frontend** (Terminal 2)
 ```bash
-cd webhook-listener && source .venv/bin/activate && uvicorn main:app --reload --port 8001
+cd frontend
+npm install
+npm run dev
 ```
 
-**Terminal 4 - Frontend:**
-```bash
-cd frontend && npm run dev
-```
+> The webhook listener is only needed if you want to receive events from a deployed app. For local development and simulation it is not required.
+
+---
+
+## Environment Variables (backend/.env)
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `SECRET_KEY` | JWT signing secret |
+| `ANTHROPIC_API_KEY` | Claude API key (experiment implementation + analysis) |
+| `OPENAI_API_KEY` | OpenAI key (used for event extraction) |
+| `GITHUB_CLIENT_ID` | GitHub OAuth app client ID |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret |
+| `FRONTEND_URL` | Frontend origin for CORS and OAuth redirect |
+
+---
 
 ## Database Migrations
 
 ```bash
 cd backend
-source .venv/bin/activate
-alembic revision --autogenerate -m "description"
-alembic upgrade head
+# Apply all pending migrations:
+python -m alembic upgrade head
+
+# Generate a new migration after model changes:
+python -m alembic revision --autogenerate -m "description"
 ```
+
+---
+
+## Testing
+
+```bash
+cd backend
+python test_simulate.py   # end-to-end simulate + analysis pipeline
+```
+
+The test inserts real events into the DB, runs the LLM analysis, and verifies InsightData is saved correctly.
+
+---
 
 ## Deploy
 
-Push to `main` branch - GitHub Actions builds and pushes to GHCR automatically.
+Push to `main` — GitHub Actions builds and pushes Docker images to GHCR automatically.
 
 ```bash
 docker-compose up --build

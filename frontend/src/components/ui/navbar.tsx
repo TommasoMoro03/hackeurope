@@ -18,7 +18,7 @@ interface NavbarProps {
 }
 
 export const Navbar = ({
-  brandName = 'HackEurope',
+  brandName = 'Pryo',
   brandIcon,
   status,
   links = [],

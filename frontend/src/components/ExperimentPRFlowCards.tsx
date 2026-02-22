@@ -10,7 +10,7 @@ interface ExperimentPRFlowCardsProps {
 export const ExperimentPRFlowCards = ({
   experiment,
   onMerged,
-  onExperimentUpdate,
+  onExperimentUpdate: _onExperimentUpdate,
 }: ExperimentPRFlowCardsProps) => {
 
   return (

@@ -13,7 +13,7 @@ interface ExperimentDetailsCardsProps {
 
 export const ExperimentDetailsCards = ({
   experiment,
-  onExperimentUpdate,
+  onExperimentUpdate: _onExperimentUpdate,
   onFinish,
   onIterate,
   isFinishing = false,
