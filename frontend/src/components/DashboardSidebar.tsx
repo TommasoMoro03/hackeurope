@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FlaskConical, Plus, Github, LogOut } from 'lucide-react';
+import { FlaskConical, Plus, Github, LogOut, Clock } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar';
 
 interface Project {
@@ -20,6 +20,7 @@ interface DashboardSidebarProps<T extends ExperimentItem = ExperimentItem> {
   user: { username?: string; email?: string } | null;
   onSelectExperiment: (exp: T | null) => void;
   onToggleRepoPopup: () => void;
+  onToggleHistory: () => void;
   onLogout: () => void;
 }
 
@@ -30,6 +31,7 @@ export function DashboardSidebar<T extends ExperimentItem = ExperimentItem>({
   user,
   onSelectExperiment,
   onToggleRepoPopup,
+  onToggleHistory,
   onLogout,
 }: DashboardSidebarProps<T>) {
   return (
@@ -42,6 +44,7 @@ export function DashboardSidebar<T extends ExperimentItem = ExperimentItem>({
           user={user}
           onSelectExperiment={onSelectExperiment}
           onToggleRepoPopup={onToggleRepoPopup}
+          onToggleHistory={onToggleHistory}
           onLogout={onLogout}
         />
       </SidebarBody>
@@ -56,6 +59,7 @@ function DashboardSidebarContent<T extends ExperimentItem>({
   user,
   onSelectExperiment,
   onToggleRepoPopup,
+  onToggleHistory,
   onLogout,
 }: DashboardSidebarProps<T>) {
   const { open } = useSidebar();
@@ -63,8 +67,8 @@ function DashboardSidebarContent<T extends ExperimentItem>({
   return (
     <>
         <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto scrollbar-hide">
-          {/* Logo */}
-          <div className="px-3 pb-4">
+          {/* Logo + History Button */}
+          <div className="px-3 pb-4 flex items-center justify-between gap-2">
             <Link
               to="/"
               className="relative z-20 flex items-center gap-2 py-1 text-sm font-normal text-white"
@@ -80,6 +84,17 @@ function DashboardSidebarContent<T extends ExperimentItem>({
                 </motion.span>
               )}
             </Link>
+            {open && (
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                onClick={onToggleHistory}
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
+                title="View experiment history"
+              >
+                <Clock className="w-4 h-4" />
+              </motion.button>
+            )}
           </div>
 
           {/* New experiment */}

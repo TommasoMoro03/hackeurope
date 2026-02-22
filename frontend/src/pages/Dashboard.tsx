@@ -10,6 +10,7 @@ import { DashboardNav } from '@/components/DashboardNav';
 import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { UnifiedExperimentWorkspace } from '@/components/UnifiedExperimentWorkspace';
 import { ExperimentFinishing } from '@/components/ExperimentFinishing';
+import { ExperimentHistoryModal } from '@/components/ExperimentHistoryModal';
 import type { ExperimentFormData } from '@/components/ExperimentForm';
 
 interface Project {
@@ -46,6 +47,7 @@ interface Experiment {
   segment_preview_hashes?: Record<string, string>;
   segments: Segment[];
   created_at: string;
+  winning_segment_id?: number;
 }
 
 export const Dashboard = () => {
@@ -54,6 +56,7 @@ export const Dashboard = () => {
   const { user, logout } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [showRepoPopup, setShowRepoPopup] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [creatingExperiment, setCreatingExperiment] = useState<{ id: number; name: string } | null>(null);
@@ -232,6 +235,7 @@ export const Dashboard = () => {
           user={user}
           onSelectExperiment={(exp) => setSelectedExperiment(exp)}
           onToggleRepoPopup={() => setShowRepoPopup(!showRepoPopup)}
+          onToggleHistory={() => setShowHistoryModal(true)}
           onLogout={logout}
         />
         <div className="flex-1 relative z-20 flex flex-col min-h-0 overflow-y-auto scrollbar-hide p-6">
@@ -263,6 +267,14 @@ export const Dashboard = () => {
           </>
         </div>
       </div>
+
+      {/* History Modal */}
+      {showHistoryModal && (
+        <ExperimentHistoryModal
+          experiments={experiments}
+          onClose={() => setShowHistoryModal(false)}
+        />
+      )}
     </AppBackground>
   );
 };
