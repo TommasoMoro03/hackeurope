@@ -203,7 +203,7 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
                   value={form.metrics}
                   onChange={(e) => setForm({ ...form, metrics: e.target.value })}
                   rows={1}
-                  placeholder="click_through_rate, signup_click"
+                  placeholder="e.g. Proportion of clicks"
                   className={cn(inputStyles, 'resize-none')}
                 />
               </div>
