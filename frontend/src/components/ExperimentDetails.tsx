@@ -2,25 +2,7 @@ import { useState, useEffect } from 'react';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/axios';
-
-interface Segment {
-  id: number;
-  name: string;
-  instructions: string;
-  percentage: number;
-}
-
-interface Experiment {
-  id: number;
-  name: string;
-  description: string;
-  status: string;
-  percentage: number;
-  metrics: string;
-  preview_url?: string;
-  segments: Segment[];
-  created_at: string;
-}
+import type { Experiment } from '@/types/experiment';
 
 interface ExperimentDetailsProps {
   experiment: Experiment;

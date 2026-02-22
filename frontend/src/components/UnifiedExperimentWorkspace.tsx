@@ -6,27 +6,7 @@ import { ExperimentProgressSteps } from '@/components/ExperimentProgressSteps';
 import { ExperimentPRFlowCards } from '@/components/ExperimentPRFlowCards';
 import { SplitPreviewPanel } from '@/components/SplitPreviewPanel';
 import type { ExperimentFormData } from '@/components/ExperimentForm';
-
-interface Segment {
-  id: number;
-  name: string;
-  instructions: string;
-  percentage: number;
-}
-
-interface Experiment {
-  id: number;
-  name: string;
-  description: string;
-  status: string;
-  percentage: number;
-  metrics: string;
-  preview_url?: string;
-  pr_url?: string;
-  segment_preview_hashes?: Record<string, string>;  // { segment_id: hash }
-  segments: Segment[];
-  created_at: string;
-}
+import type { Experiment } from '@/types/experiment';
 
 interface Project {
   github_url: string;

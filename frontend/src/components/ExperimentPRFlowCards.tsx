@@ -1,21 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/axios';
 import { ExternalLink, Link2 } from 'lucide-react';
-
-interface Segment {
-  id: number;
-  name: string;
-  percentage: number;
-}
-
-interface Experiment {
-  id: number;
-  name: string;
-  pr_url?: string;
-  preview_url?: string;
-  segment_preview_hashes?: Record<string, string>;
-  segments?: Segment[];
-}
+import type { Experiment } from '@/types/experiment';
 
 interface ExperimentPRFlowCardsProps {
   experiment: Experiment;
