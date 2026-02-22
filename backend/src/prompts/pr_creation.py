@@ -7,6 +7,15 @@ EXPERIMENT DEFINITION:
 TRACKING EVENTS:
 {{EVENTS_JSON}}
 
+PREVIEW HASHES (for ?x=HASH URL override):
+{{PREVIEW_HASHES_JSON}}
+
+CRITICAL - Preview mode: Each segment has a preview_hash. When the user visits the app with ?x=HASH in the URL (e.g. https://myapp.com?x=abc123xyz), the app MUST detect this and force-render that segment's variant, bypassing normal random assignment. Implement client-side logic:
+1. On load, parse URL search params for "x" (e.g. new URLSearchParams(window.location.search).get("x"))
+2. If x matches a segment's preview_hash, render that segment's variant and use that segment_id for all tracking
+3. Otherwise, use normal random assignment based on segment percentages
+Each segment in the experiment JSON includes "preview_hash". Use these exact values.
+
 WEBHOOK: {{WEBHOOK_URL}}
 Payload structure:
 {
@@ -38,7 +47,12 @@ IMPLEMENTATION:
 2. Add ONE minimal entry point (link, button, or route) to access experiment
 3. Add fetch() calls for tracking events using actual IDs from {{EXPERIMENT_JSON}}
 
-EXAMPLE (Next.js):
+EXAMPLE (Next.js) - include preview hash check:
+// On app/experiment layout or provider: detect ?x=HASH and force segment
+const urlHash = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('x') : null;
+const forcedSegment = segments.find(s => s.preview_hash === urlHash);
+// If forcedSegment, render that variant; else use random assignment.
+
 // NEW FILE: app/experiment-name/control/page.tsx
 export default function ControlVariant() {
   const trackEvent = (eventId: string) => {

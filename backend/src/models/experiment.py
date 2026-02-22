@@ -33,6 +33,9 @@ class Experiment(Base):
     # PR URL when experiment implementation creates a pull request
     pr_url = Column(String, nullable=True)
 
+    # JSON: {segment_id: preview_hash} - URL param ?x=HASH forces that variant for preview
+    segment_preview_hashes = Column(String, nullable=True)  # JSON string
+
     # Winning segment id, can be null of course (at the beginning)
     winning_segment_id = Column(Integer, ForeignKey("segment.id", ondelete="SET NULL"), nullable=True)
 

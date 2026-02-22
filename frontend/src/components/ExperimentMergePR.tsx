@@ -1,12 +1,21 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/axios';
 import { ExternalLink, Link2 } from 'lucide-react';
+import { SplitPreviewPanel } from '@/components/SplitPreviewPanel';
+
+interface Segment {
+  id: number;
+  name: string;
+  percentage: number;
+}
 
 interface Experiment {
   id: number;
   name: string;
   pr_url?: string;
   preview_url?: string;
+  segment_preview_hashes?: Record<string, string>;
+  segments?: Segment[];
 }
 
 interface ExperimentMergePRProps {
@@ -39,8 +48,20 @@ export const ExperimentMergePR = ({
     }
   };
 
+  const baseUrl = (experiment.preview_url || editUrl).trim();
+  const hashes = experiment.segment_preview_hashes;
+  const controlSeg = experiment.segments?.[0];
+  const variantSeg = experiment.segments?.[1];
+  const controlHash = controlSeg && hashes?.[String(controlSeg.id)];
+  const variantHash = variantSeg && hashes?.[String(variantSeg.id)];
+  const sep = baseUrl.includes('?') ? '&' : '?';
+  const controlUrl = baseUrl && controlHash ? `${baseUrl}${sep}x=${controlHash}` : undefined;
+  const variantUrl = baseUrl && variantHash ? `${baseUrl}${sep}x=${variantHash}` : undefined;
+  const hasPreview = !!(baseUrl && controlUrl && variantUrl);
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="flex gap-6 min-h-0 flex-1 overflow-hidden">
+      <aside className="w-[340px] shrink-0 flex flex-col gap-4 overflow-y-auto">
       {/* PR Created - main card */}
       <div className="glass-panel-vibe rounded-xl border border-white/10 p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -91,7 +112,7 @@ export const ExperimentMergePR = ({
           <span className="text-[10px] text-slate-500 uppercase">(after checking the PR)</span>
         </div>
         <p className="text-xs text-slate-400 mb-4">
-          Paste your deployed preview URL (e.g. from Vercel, Netlify, or a branch preview) to see Control vs Variant side by side.
+          Just paste your deployed preview URL — Control and Variant B will load automatically with the right hashes.
         </p>
         <div className="flex gap-2">
           <input
@@ -123,6 +144,21 @@ export const ExperimentMergePR = ({
         </button>
         <p className="text-xs text-slate-500">Once merged, the experiment will become active</p>
       </div>
+      </aside>
+
+      {hasPreview && (
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden min-h-[400px]">
+          <SplitPreviewPanel
+            mode="live"
+            controlLabel={controlSeg?.name ?? 'Control'}
+            variantLabel={variantSeg?.name ?? 'Variant B'}
+            controlUrl={controlUrl}
+            variantUrl={variantUrl}
+            controlData={`${((controlSeg?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
+            variantData={`${((variantSeg?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
+          />
+        </main>
+      )}
     </div>
   );
 };

@@ -19,6 +19,7 @@ interface Experiment {
   percentage: number;
   metrics: string;
   preview_url?: string;
+  segment_preview_hashes?: Record<string, string>;
   segments: Segment[];
   created_at: string;
 }
@@ -89,6 +90,23 @@ export const ExperimentDetailsCards = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 line-clamp-2">{experiment.description}</p>
+          {experiment.segment_preview_hashes && experiment.preview_url && Object.keys(experiment.segment_preview_hashes).length > 0 && (
+            <div className="text-[10px] text-slate-500 space-y-1">
+              <span className="uppercase">Preview links:</span>
+              {experiment.segments.slice(0, 2).map((seg) => {
+                const hash = experiment.segment_preview_hashes?.[String(seg.id)];
+                if (!hash) return null;
+                const sep = experiment.preview_url!.includes('?') ? '&' : '?';
+                const url = `${experiment.preview_url}${sep}x=${hash}`;
+                return (
+                  <div key={seg.id} className="flex items-center gap-1">
+                    <span className="text-slate-500 w-14 shrink-0">{seg.name}:</span>
+                    <code className="text-[9px] font-mono text-slate-400 truncate" title={url}>{url}</code>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-slate-500 uppercase">Preview URL</span>
             <span className="text-xs text-slate-400 truncate flex-1">
@@ -107,31 +125,13 @@ export const ExperimentDetailsCards = ({
             </button>
           </div>
           <div className="space-y-1.5">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Traffic split: drag between A and B</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Traffic split</p>
             <TrafficSplitSlider
               aPercent={(controlSegment?.percentage ?? 0.5) * 100}
-              onSplitChange={async (aPercent) => {
-                const a = Math.max(0, Math.min(100, aPercent)) / 100;
-                const b = 1 - a;
-                try {
-                  await api.patch(`/api/experiments/${experiment.id}/segment-percentages`, {
-                    segments: [
-                      { id: controlSegment!.id, percentage: a },
-                      { id: variantSegment!.id, percentage: b },
-                    ],
-                  });
-                  onExperimentUpdate?.({
-                    segments: [
-                      { ...controlSegment!, percentage: a },
-                      { ...variantSegment!, percentage: b },
-                    ],
-                  });
-                } catch {
-                  // ignore
-                }
-              }}
+              onSplitChange={() => {}}
               aLabel={controlSegment?.name ?? 'A'}
               bLabel={variantSegment?.name ?? 'B'}
+              disabled
             />
           </div>
           <div className="grid grid-cols-2 gap-2">

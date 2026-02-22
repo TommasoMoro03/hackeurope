@@ -1,6 +1,7 @@
 import asyncio
 import time
 import json
+import secrets
 from sqlalchemy.orm import Session
 from src.models.experiment import Experiment
 from src.models.project import Project
@@ -87,6 +88,16 @@ def implement_experiment_sync(experiment_id: int, db: Session):
         # STEP 1: Extract events and computation logic from metrics
         print(f"Step 1: Extracting events from metrics for experiment {experiment_id}")
 
+        # Use existing preview hashes (set at creation) or generate if missing
+        if experiment.segment_preview_hashes:
+            segment_preview_hashes = json.loads(experiment.segment_preview_hashes)
+        else:
+            segment_preview_hashes = {
+                str(seg.id): secrets.token_urlsafe(8) for seg in experiment.segments
+            }
+            experiment.segment_preview_hashes = json.dumps(segment_preview_hashes)
+            db.commit()
+
         experiment_json = {
             "id": experiment.id,
             "project_id": project.id,
@@ -94,12 +105,14 @@ def implement_experiment_sync(experiment_id: int, db: Session):
             "description": experiment.description,
             "percentage": experiment.percentage,
             "metrics": experiment.metrics,
+            "segment_preview_hashes": segment_preview_hashes,
             "segments": [
                 {
                     "id": seg.id,
                     "name": seg.name,
                     "instructions": seg.instructions,
-                    "percentage": seg.percentage
+                    "percentage": seg.percentage,
+                    "preview_hash": segment_preview_hashes.get(str(seg.id)),
                 }
                 for seg in experiment.segments
             ]

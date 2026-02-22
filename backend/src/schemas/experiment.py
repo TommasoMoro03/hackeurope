@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, field_validator
+from typing import Dict, List, Optional
 from datetime import datetime
 
 
@@ -54,8 +54,22 @@ class ExperimentResponse(ExperimentBase):
     computation_logic: Optional[str] = None
     preview_url: Optional[str] = None
     pr_url: Optional[str] = None
+    segment_preview_hashes: Optional[Dict[str, str]] = None  # {"segment_id": "hash"}
     segments: List[SegmentResponse]
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+    @field_validator("segment_preview_hashes", mode="before")
+    @classmethod
+    def parse_preview_hashes(cls, v):
+        if v is None or v == "":
+            return None
+        if isinstance(v, str):
+            import json
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v

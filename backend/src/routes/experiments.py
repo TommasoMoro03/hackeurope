@@ -11,6 +11,8 @@ from src.schemas.experiment import ExperimentCreate, ExperimentResponse, Experim
 from src.services.experiment_implementation_service import implement_experiment_sync
 from typing import List
 import threading
+import json
+import secrets
 
 router = APIRouter(prefix="/experiments", tags=["Experiments"])
 
@@ -63,6 +65,14 @@ def create_experiment(
         )
         db.add(new_segment)
 
+    db.commit()
+    db.refresh(new_experiment)
+
+    # Generate preview hashes for A and B immediately (user just needs to give preview URL)
+    segment_preview_hashes = {
+        str(seg.id): secrets.token_urlsafe(8) for seg in new_experiment.segments
+    }
+    new_experiment.segment_preview_hashes = json.dumps(segment_preview_hashes)
     db.commit()
     db.refresh(new_experiment)
 

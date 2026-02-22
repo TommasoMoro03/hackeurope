@@ -22,6 +22,7 @@ interface Experiment {
   metrics: string;
   preview_url?: string;
   pr_url?: string;
+  segment_preview_hashes?: Record<string, string>;  // { segment_id: hash }
   segments: Segment[];
   created_at: string;
 }
@@ -114,16 +115,32 @@ export const UnifiedExperimentWorkspace = ({
     }
 
     if (mode === 'experiment' && selectedExperiment) {
-      const hasPreviewData = !!selectedExperiment.preview_url?.trim();
+      const baseUrl = selectedExperiment.preview_url?.trim() || '';
+      const hashes = selectedExperiment.segment_preview_hashes;
+      const controlSeg = selectedExperiment.segments[0];
+      const variantSeg = selectedExperiment.segments[1];
+      const controlHash = controlSeg && hashes?.[String(controlSeg.id)];
+      const variantHash = variantSeg && hashes?.[String(variantSeg.id)];
+      const controlUrl = baseUrl
+        ? controlHash
+          ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}x=${controlHash}`
+          : baseUrl
+        : undefined;
+      const variantUrl = baseUrl
+        ? variantHash
+          ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}x=${variantHash}`
+          : baseUrl
+        : undefined;
+      const hasPreviewData = !!baseUrl;
       return (
         <SplitPreviewPanel
           mode={hasPreviewData ? 'live' : 'loading'}
-          controlLabel={selectedExperiment.segments[0]?.name ?? 'Control'}
-          variantLabel={selectedExperiment.segments[1]?.name ?? 'Variant B'}
-          controlUrl={selectedExperiment.preview_url}
-          variantUrl={selectedExperiment.preview_url}
-          controlData={`${((selectedExperiment.segments[0]?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
-          variantData={`${((selectedExperiment.segments[1]?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
+          controlLabel={controlSeg?.name ?? 'Control'}
+          variantLabel={variantSeg?.name ?? 'Variant B'}
+          controlUrl={controlUrl}
+          variantUrl={variantUrl}
+          controlData={`${((controlSeg?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
+          variantData={`${((variantSeg?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
         />
       );
     }

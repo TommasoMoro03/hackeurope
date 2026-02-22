@@ -44,6 +44,7 @@ interface Experiment {
   metrics: string;
   preview_url?: string;
   pr_url?: string;
+  segment_preview_hashes?: Record<string, string>;
   segments: Segment[];
   created_at: string;
 }
@@ -246,11 +247,13 @@ export const Dashboard = () => {
               ['started', 'implementing', 'pr_created'].includes(selectedExperiment.status);
             if (showMergePR) {
               return (
-                <ExperimentMergePR
-                  experiment={selectedExperiment!}
-                  onMerged={handlePRMerged}
-                  onExperimentUpdate={handleExperimentUpdate}
-                />
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <ExperimentMergePR
+                    experiment={selectedExperiment!}
+                    onMerged={handlePRMerged}
+                    onExperimentUpdate={handleExperimentUpdate}
+                  />
+                </div>
               );
             }
             return (

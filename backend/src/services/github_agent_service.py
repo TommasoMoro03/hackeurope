@@ -125,12 +125,17 @@ class GitHubAgentService:
         # Build prompt from template
         from src.prompts.pr_creation import PR_CREATION_PROMPT
 
+        preview_hashes_json = json.dumps(
+            experiment_data.get("segment_preview_hashes", {}), indent=2
+        )
+
         prompt = PR_CREATION_PROMPT
         prompt = prompt.replace("{{EXPERIMENT_JSON}}", json.dumps(experiment_data, indent=2))
         prompt = prompt.replace("{{EVENTS_JSON}}", json.dumps(events_data, indent=2))
         prompt = prompt.replace("{{EXPERIMENT_NAME}}", experiment_data['name'])
         prompt = prompt.replace("{{NUM_SEGMENTS}}", str(len(experiment_data.get('segments', []))))
         prompt = prompt.replace("{{WEBHOOK_URL}}", "http://localhost:9000/webhook/event")
+        prompt = prompt.replace("{{PREVIEW_HASHES_JSON}}", preview_hashes_json)
 
         # Build system prompt (simplified from apply-changes)
         system_prompt = """You are an expert repository-integrated coding assistant creating A/B test experiments.
