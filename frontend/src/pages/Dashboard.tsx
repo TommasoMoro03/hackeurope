@@ -42,6 +42,7 @@ export const Dashboard = () => {
   const [isFinishing, setIsFinishing] = useState(false);
   const [iteratingExperiment, setIteratingExperiment] = useState<{ id: number; name: string } | null>(null);
   const [iterationSuggestion, setIterationSuggestion] = useState<any>(null);
+  const [experimentFormInitialData, setExperimentFormInitialData] = useState<Partial<ExperimentFormData> | undefined>(undefined);
 
   const { data: project, isLoading: loading } = useQuery({
     queryKey: ['github-project'],
@@ -99,6 +100,9 @@ export const Dashboard = () => {
 
   const handleCreateExperiment = async (formData: ExperimentFormData) => {
     try {
+      // Clear initial data after submission
+      setExperimentFormInitialData(undefined);
+
       const response = await api.post('/api/experiments', formData);
       setCreatingExperiment({
         id: response.data.id,
@@ -210,11 +214,10 @@ export const Dashboard = () => {
 
   const handleAcceptIteration = (formData: ExperimentFormData) => {
     // Pre-fill the form with the iteration suggestion
+    setExperimentFormInitialData(formData);
     setIteratingExperiment(null);
     setIterationSuggestion(null);
     setSelectedExperiment(null);
-    // Create the new experiment
-    handleCreateExperiment(formData);
   };
 
   const handleRejectIteration = async () => {
@@ -300,6 +303,7 @@ export const Dashboard = () => {
               onIterationComplete={handleIterationComplete}
               onAcceptIteration={handleAcceptIteration}
               onRejectIteration={handleRejectIteration}
+              experimentFormInitialData={experimentFormInitialData}
             />
           </>
         </div>

@@ -33,17 +33,30 @@ export const ExperimentIterationSuggestion = ({
   onReject,
 }: ExperimentIterationSuggestionProps) => {
   const handleAccept = () => {
+    // Ensure we have exactly 2 segments
+    const segments = suggestion.segments.slice(0, 2);
+    if (segments.length < 2) {
+      console.error('Iteration suggestion must have exactly 2 segments');
+      return;
+    }
+
+    // Normalize percentages to ensure they sum to 1.0
+    const totalPercentage = segments.reduce((sum: number, seg: any) => sum + seg.percentage, 0);
+    const normalizedSegments = segments.map((seg: any) => ({
+      name: seg.name,
+      instructions: seg.instructions,
+      percentage: seg.percentage / totalPercentage,
+    }));
+
     // Convert suggestion to ExperimentFormData format
     const formData: ExperimentFormData = {
       name: suggestion.experiment.name,
       description: suggestion.experiment.description,
       metrics: suggestion.experiment.metrics,
       percentage: 100, // Default to 100% coverage
-      segments: suggestion.segments.map((seg) => ({
-        name: seg.name,
-        instructions: seg.instructions,
-        percentage: seg.percentage,
-      })),
+      numSegments: 2,
+      preview_url: '',
+      segments: normalizedSegments,
     };
     onAccept(formData);
   };

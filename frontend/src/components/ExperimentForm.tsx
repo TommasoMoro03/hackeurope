@@ -26,6 +26,7 @@ interface ExperimentFormProps {
   onSubmit: (data: ExperimentFormData) => void;
   layout?: 'default' | 'cards';
   percentageError?: string | null;
+  initialData?: Partial<ExperimentFormData>;
 }
 
 const DEFAULT_EXPERIMENT_NAME = 'New A/B Test';
@@ -35,15 +36,15 @@ const inputStyles =
   'w-full px-3 py-1.5 rounded border border-white/10 bg-black/30 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all font-mono text-xs';
 const labelStyles = 'block text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1.5';
 
-export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: percentageErrorProp }: ExperimentFormProps) => {
+export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: percentageErrorProp, initialData }: ExperimentFormProps) => {
   const [form, setForm] = useState<ExperimentFormData>({
-    name: DEFAULT_EXPERIMENT_NAME,
-    description: '',
-    percentage: 100,
-    numSegments: 2,
-    metrics: '',
-    preview_url: '',
-    segments: [
+    name: initialData?.name || DEFAULT_EXPERIMENT_NAME,
+    description: initialData?.description || '',
+    percentage: initialData?.percentage || 100,
+    numSegments: initialData?.numSegments || 2,
+    metrics: initialData?.metrics || '',
+    preview_url: initialData?.preview_url || '',
+    segments: initialData?.segments || [
       { name: 'A', instructions: '', percentage: 0.5 },
       { name: 'B', instructions: '', percentage: 0.5 },
     ],
