@@ -28,12 +28,12 @@ interface ExperimentTabsProps {
   experiment: Experiment;
   onFinish: () => void;
   onExperimentUpdate?: (updates: Partial<Experiment>) => void;
-  onCreateExperiment?: (data: any) => void;
+  onAcceptIterationSuggestion?: (data: any) => void;
 }
 
 type TabType = 'details' | 'data' | 'preview' | 'results';
 
-export const ExperimentTabs = ({ experiment, onFinish, onExperimentUpdate, onCreateExperiment }: ExperimentTabsProps) => {
+export const ExperimentTabs = ({ experiment, onFinish, onExperimentUpdate, onAcceptIterationSuggestion }: ExperimentTabsProps) => {
   // Default to results tab if experiment is finished, otherwise details
   const defaultTab: TabType = experiment.status === 'finished' ? 'results' : 'details';
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
@@ -131,7 +131,7 @@ export const ExperimentTabs = ({ experiment, onFinish, onExperimentUpdate, onCre
           experimentId={experiment.id}
           experimentName={experiment.name}
           onClose={() => setShowIterationModal(false)}
-          onCreateExperiment={onCreateExperiment}
+          onAcceptSuggestion={onAcceptIterationSuggestion}
         />
       )}
     </div>

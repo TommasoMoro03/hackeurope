@@ -26,12 +26,14 @@ interface ExperimentDetailsCardsProps {
   experiment: Experiment;
   onExperimentUpdate?: (updates: Partial<Experiment>) => void;
   onFinish?: () => void;
+  onIterate?: () => void;
 }
 
 export const ExperimentDetailsCards = ({
   experiment,
   onExperimentUpdate,
   onFinish,
+  onIterate,
 }: ExperimentDetailsCardsProps) => {
   const [showUrlPopup, setShowUrlPopup] = useState(false);
   const [editUrl, setEditUrl] = useState(experiment.preview_url ?? '');
@@ -127,10 +129,17 @@ export const ExperimentDetailsCards = ({
               Finish Experiment
             </button>
           )}
-          {experiment.status === 'finished' && (
-            <span className="block mt-3 py-2 text-center rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium border border-emerald-500/30">
-              Experiment Finished
-            </span>
+          {experiment.status === 'finished' && onIterate && (
+            <button
+              type="button"
+              onClick={onIterate}
+              className="w-full mt-3 py-2 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-medium transition-all flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+              </svg>
+              Iterate
+            </button>
           )}
         </div>
       </GlassPanel>
