@@ -11,7 +11,9 @@ import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { UnifiedExperimentWorkspace } from '@/components/UnifiedExperimentWorkspace';
 import { ExperimentFinishing } from '@/components/ExperimentFinishing';
 import { ExperimentMergePR } from '@/components/ExperimentMergePR';
+import { ExperimentHistoryModal } from '@/components/ExperimentHistoryModal';
 import type { ExperimentFormData } from '@/components/ExperimentForm';
+import type { Experiment } from '@/types/experiment';
 
 interface Project {
   id: number;
@@ -28,33 +30,13 @@ interface Project {
   created_at: string;
 }
 
-interface Segment {
-  id: number;
-  name: string;
-  instructions: string;
-  percentage: number;
-}
-
-interface Experiment {
-  id: number;
-  name: string;
-  description: string;
-  status: string;
-  percentage: number;
-  metrics: string;
-  preview_url?: string;
-  pr_url?: string;
-  segment_preview_hashes?: Record<string, string>;
-  segments: Segment[];
-  created_at: string;
-}
-
 export const Dashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, logout } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [showRepoPopup, setShowRepoPopup] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [creatingExperiment, setCreatingExperiment] = useState<{ id: number; name: string } | null>(null);
@@ -233,6 +215,7 @@ export const Dashboard = () => {
           user={user}
           onSelectExperiment={(exp) => setSelectedExperiment(exp)}
           onToggleRepoPopup={() => setShowRepoPopup(!showRepoPopup)}
+          onToggleHistory={() => setShowHistoryModal(true)}
           onLogout={logout}
         />
         <div className="flex-1 relative z-20 flex flex-col min-h-0 overflow-y-auto p-6">
@@ -280,6 +263,14 @@ export const Dashboard = () => {
           })()}
         </div>
       </div>
+
+      {/* History Modal */}
+      {showHistoryModal && (
+        <ExperimentHistoryModal
+          experiments={experiments}
+          onClose={() => setShowHistoryModal(false)}
+        />
+      )}
     </AppBackground>
   );
 };

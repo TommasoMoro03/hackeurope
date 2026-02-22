@@ -55,6 +55,7 @@ class ExperimentResponse(ExperimentBase):
     preview_url: Optional[str] = None
     pr_url: Optional[str] = None
     segment_preview_hashes: Optional[Dict[str, str]] = None  # {"segment_id": "hash"}
+    winning_segment_id: Optional[int] = None
     segments: List[SegmentResponse]
     created_at: datetime
 
