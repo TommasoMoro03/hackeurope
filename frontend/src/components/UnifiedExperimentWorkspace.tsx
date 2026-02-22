@@ -129,7 +129,7 @@ export const UnifiedExperimentWorkspace = ({
               onComplete={onCreationComplete}
               onExperimentUpdate={onExperimentUpdate}
               compact
-              creationCompleteInRightPanel={isCreationComplete}
+              creationCompleteInRightPanel={isCreationComplete ?? undefined}
             />
           </GlassPanel>
           <GlassPanel title="Test Configuration" className="rounded-lg shrink-0">
