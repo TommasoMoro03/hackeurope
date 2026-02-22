@@ -47,8 +47,8 @@ class Settings(BaseSettings):
     # Anthropic Configuration
     ANTHROPIC_API_KEY: str = ""
 
-    # CORS Settings
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    # CORS Settings ("*" = allow all origins, for hackathon)
+    CORS_ORIGINS: str = "*"
     ALLOWED_HOSTS: str = "localhost,127.0.0.1"
 
     # Email Configuration (optional)
@@ -64,6 +64,8 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> List[str]:
+        if self.CORS_ORIGINS.strip() == "*":
+            return ["*"]
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
     @property

@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -10,22 +9,9 @@ import { Dashboard } from '@/pages/Dashboard';
 import { LinkRepository } from '@/pages/LinkRepository';
 import { ConnectGitHub } from '@/pages/ConnectGitHub';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-
 function App() {
-  // Debug logging
-  console.log('Environment variables:', {
-    VITE_API_URL: import.meta.env.VITE_API_URL,
-    VITE_GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID ? 'Set' : 'Missing'
-  });
-
-  if (!GOOGLE_CLIENT_ID) {
-    console.error('VITE_GOOGLE_CLIENT_ID is not set!');
-  }
-
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <BrowserRouter>
+    <BrowserRouter>
         <AuthProvider>
           <Toaster position="top-right" />
           <Routes>
@@ -59,8 +45,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
-      </BrowserRouter>
-    </GoogleOAuthProvider>
+    </BrowserRouter>
   );
 }
 

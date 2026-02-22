@@ -8,7 +8,6 @@ import { ArrowRight, Terminal } from 'lucide-react';
 import { Navbar } from '@/components/ui/navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { FormInput } from '@/components/FormInput';
-import { GoogleLoginButton } from '@/components/GoogleLoginButton';
 import { AppBackground } from '@/components/ui/app-background';
 import { GlassPanel } from '@/components/ui/glass-panel';
 
@@ -83,7 +82,7 @@ export const Signup = () => {
                 <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">
                   Sign-In
                 </span>
-                <span className="text-sm text-slate-300">Email or Google</span>
+                <span className="text-sm text-slate-300">Email</span>
               </div>
             </div>
           </motion.div>
@@ -141,17 +140,6 @@ export const Signup = () => {
                       )}
                     </button>
                   </form>
-
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-white/5" />
-                    </div>
-                    <div className="relative flex justify-center text-xs">
-                      <span className="px-2 bg-transparent text-slate-600">or</span>
-                    </div>
-                  </div>
-
-                  <GoogleLoginButton />
                 </div>
 
                 <div className="flex justify-between items-center text-[10px] uppercase text-slate-600 font-bold tracking-widest pt-2">

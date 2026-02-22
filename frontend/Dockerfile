@@ -14,19 +14,11 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Accept build arguments
-ARG VITE_GOOGLE_CLIENT_ID
+# Optional: override API URL at build time (defaults to Railway backend in axios.ts)
 ARG VITE_API_URL
-
-# Set as environment variables for the build process
-ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 ENV VITE_API_URL=$VITE_API_URL
 
-# Debug: Print variables to build logs (remove in production if desired)
-RUN echo "Building with VITE_GOOGLE_CLIENT_ID: $VITE_GOOGLE_CLIENT_ID"
-RUN echo "Building with VITE_API_URL: $VITE_API_URL"
-
-# Build the app (environment variables are now available)
+# Build the app
 RUN npm run build
 
 # Stage 2: Production
