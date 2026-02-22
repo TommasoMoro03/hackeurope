@@ -105,6 +105,7 @@ def implement_experiment_sync(experiment_id: int, db: Session):
             "description": experiment.description,
             "percentage": experiment.percentage,
             "metrics": experiment.metrics,
+            "preview_url": experiment.preview_url or None,
             "segment_preview_hashes": segment_preview_hashes,
             "segments": [
                 {

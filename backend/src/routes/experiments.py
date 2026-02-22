@@ -87,13 +87,16 @@ def create_experiment(
         )
 
     # Create experiment with "started" status
+    # Normalize empty/whitespace to None for preview_url to avoid DB inconsistency
+    preview_url = (experiment_data.preview_url or "").strip() or None
+
     new_experiment = Experiment(
         project_id=project.id,
         name=experiment_data.name,
         description=experiment_data.description,
         percentage=experiment_data.percentage,
         metrics=experiment_data.metrics,
-        preview_url=experiment_data.preview_url,
+        preview_url=preview_url,
         status="started"
     )
     db.add(new_experiment)
@@ -310,7 +313,8 @@ def update_experiment_preview_url(
             detail="Experiment not found"
         )
 
-    experiment.preview_url = body.preview_url
+    # Normalize empty/whitespace to None to avoid DB inconsistency
+    experiment.preview_url = (body.preview_url or "").strip() or None
     db.commit()
     db.refresh(experiment)
     return experiment
