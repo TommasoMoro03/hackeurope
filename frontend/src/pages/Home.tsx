@@ -7,10 +7,10 @@ import { GlareCard } from '@/components/ui/glare-card';
 import { MovingBorder } from '@/components/ui/moving-border';
 
 const features = [
-  { label: 'Architecture', text: 'AI-driven generative UI/UX' },
-  { label: 'Logic', text: 'Real-time Bayesian statistical optimization' },
-  { label: 'Infrastructure', text: 'Zero-latency edge delivery' },
-  { label: 'Algorithm', text: 'Multi-armed bandit A/B testing' },
+  { label: 'Variants', text: 'AI generates variants from your description. No front-end coding.' },
+  { label: 'Statistics', text: 'Valid significance and winner selection. Trust the result.' },
+  { label: 'Shipping', text: 'Winners pushed as PRs. Merge when you are ready.' },
+  { label: 'Insights', text: 'LLM analysis instead of raw numbers and guesswork.' },
 ];
 
 const logLines = [
@@ -33,12 +33,12 @@ export const Home = () => {
 
       <main className="flex-1 relative z-20 flex flex-col md:flex-row min-h-0 w-full overflow-hidden">
         {/* Left: Copy */}
-        <section className="w-full md:w-1/2 flex flex-col justify-center px-6 md:px-12 lg:px-20 py-8 md:py-12 overflow-y-auto">
+        <section className="w-full md:w-1/2 flex flex-col justify-center px-6 md:px-12 lg:px-20 py-6 md:py-8 overflow-hidden shrink-0">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="max-w-xl space-y-8"
+            className="max-w-xl space-y-4 md:space-y-6"
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 text-[10px] uppercase tracking-widest font-semibold text-primary-glow">
               <span className="relative flex h-2 w-2">
@@ -48,22 +48,22 @@ export const Home = () => {
               Agentic A/B Testing
             </div>
             <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl leading-[1.1] text-white">
-              A/B Tests. <br />
-              <span className="italic text-primary-glow">Fully Automated</span>
+              A/B tests that <br />
+              <span className="italic text-primary-glow">actually ship</span>
             </h1>
-            <div className="space-y-5 pt-2">
+            <div className="space-y-3 pt-1">
               {features.map((f, i) => (
                 <motion.div
                   key={f.label}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 + i * 0.08 }}
-                  className="flex items-start gap-4"
+                  className="flex items-start gap-3"
                 >
-                  <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
+                  <span className="mt-2 size-2 rounded-full bg-primary shrink-0" />
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.2em] font-bold text-slate-400 mb-1">{f.label}</p>
-                    <p className="text-base md:text-lg font-medium text-slate-200">{f.text}</p>
+                    <p className="text-sm md:text-base uppercase tracking-[0.15em] font-bold text-slate-300 mb-0.5">{f.label}</p>
+                    <p className="text-xs md:text-sm font-medium text-slate-400 leading-snug">{f.text}</p>
                   </div>
                 </motion.div>
               ))}
@@ -83,14 +83,14 @@ export const Home = () => {
         </section>
 
         {/* Right: Vibe-style visual */}
-        <section className="w-full md:w-1/2 relative bg-[#121118] overflow-hidden flex items-center justify-center p-4 md:p-6 min-h-[50vh] md:min-h-0">
+        <section className="w-full md:w-1/2 relative bg-[#121118] overflow-hidden flex items-center justify-center p-4 md:p-6 min-h-[50vh] md:min-h-0 shrink-0">
           <div className="absolute inset-0 z-0">
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[120px]" />
             <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-600/10 rounded-full blur-[100px]" />
           </div>
 
-          <div className="relative z-10 w-full max-w-2xl max-h-full overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
+          <div className="relative z-10 w-full max-w-2xl h-full overflow-hidden flex flex-col justify-center">
+            <div className="flex justify-between items-center mb-3 md:mb-4">
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
@@ -110,7 +110,7 @@ export const Home = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 h-56 md:h-64 mb-4">
+            <div className="grid grid-cols-2 gap-3 md:gap-4 h-40 md:h-48 mb-3 md:mb-4">
               {/* Original card - GlareCard for Linear-style hover */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -184,7 +184,7 @@ export const Home = () => {
                 </div>
                 <span className="ml-3 text-slate-500 text-[10px]">live_stream.log</span>
               </div>
-              <div className="p-3 space-y-1 h-24 overflow-hidden">
+              <div className="p-2 md:p-3 space-y-1 h-20 md:h-24 overflow-hidden">
                 {logLines.map((line, i) => (
                   <div key={i} className={`flex gap-2 ${i >= 2 ? 'opacity-70' : ''} ${i >= 3 ? 'opacity-50' : ''}`}>
                     <span className="text-slate-600 shrink-0">{line.time}</span>

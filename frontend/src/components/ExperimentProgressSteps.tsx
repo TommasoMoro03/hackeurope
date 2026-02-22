@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/axios';
-import { Check, X, Loader2 } from 'lucide-react';
+import { Check, X, Loader2, ExternalLink } from 'lucide-react';
 
 interface ExperimentProgressStepsProps {
   experimentId: number;
@@ -22,6 +22,7 @@ export const ExperimentProgressSteps = ({
   compact = false,
 }: ExperimentProgressStepsProps) => {
   const [status, setStatus] = useState<string>('started');
+  const [prUrl, setPrUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [steps, setSteps] = useState<ProgressStep[]>([
     { id: 'analyze', label: 'Analyzing experiment requirements', status: 'pending' },
@@ -85,9 +86,10 @@ export const ExperimentProgressSteps = ({
         const response = await api.get(`/api/experiments/${experimentId}/status`);
         const newStatus = response.data.status;
         setStatus(newStatus);
+        if (response.data.pr_url) setPrUrl(response.data.pr_url);
 
-        if (newStatus === 'active' || newStatus === 'failed') {
-          if (newStatus === 'active') {
+        if (newStatus === 'active' || newStatus === 'pr_created' || newStatus === 'failed') {
+          if (newStatus === 'active' || newStatus === 'pr_created') {
             setSteps((prev) => prev.map((step) => ({ ...step, status: 'completed' as const })));
           }
           clearInterval(interval);
@@ -119,16 +121,27 @@ export const ExperimentProgressSteps = ({
     return <div className="w-4 h-4 rounded-full border-2 border-white/20 shrink-0" />;
   };
 
-  if (status === 'active') {
+  if (status === 'active' || status === 'pr_created') {
     return (
       <div className="p-4 text-center">
         <div className="size-12 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-3">
           <Check className="w-6 h-6 text-emerald-400" />
         </div>
-        <h3 className="text-sm font-semibold text-white mb-1">Implementation Complete!</h3>
-        <p className="text-xs text-slate-400">
-          A pull request has been created. Review and merge it to activate.
+        <h3 className="text-sm font-semibold text-white mb-1">PR Created!</h3>
+        <p className="text-xs text-slate-400 mb-3">
+          Review and merge the pull request to activate the experiment.
         </p>
+        {prUrl && (
+          <a
+            href={prUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors text-xs font-medium"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Open Pull Request
+          </a>
+        )}
       </div>
     );
   }

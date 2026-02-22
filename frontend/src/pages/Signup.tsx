@@ -47,6 +47,7 @@ export const Signup = () => {
       {/* Nav */}
       <Navbar
         brandIcon={<Terminal className="w-4 h-4 text-white" />}
+        status={{ label: 'Step 01 / 03' }}
       />
 
       {/* Main */}
@@ -61,28 +62,24 @@ export const Signup = () => {
           >
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 text-[10px] uppercase tracking-widest font-semibold text-primary-glow mb-4">
-                Registration
+                Step 01 / 03
               </div>
               <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl text-white leading-tight">
-                Create <br />
-                <span className="italic text-primary-glow">Account</span>
+                Start shipping <br />
+                <span className="italic text-primary-glow">what wins</span>
               </h1>
-              <p className="font-display text-slate-400 max-w-md text-base md:text-lg font-light leading-relaxed pt-2">
-                Join to automate A/B tests, define goals, gather data, and auto-PR winners to your repo.
+              <p className="font-display text-slate-400 max-w-md text-sm md:text-base font-light leading-relaxed pt-2">
+                Create your account. Next you will connect GitHub and link a repo so winners become PRs.
               </p>
             </div>
-            <div className="space-y-4 pt-4 border-l border-white/10 pl-6">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">
-                  Fields
-                </span>
-                <span className="text-sm text-slate-300">Optional username</span>
+            <div className="space-y-3 pt-3 border-l border-white/10 pl-6">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">Optional</span>
+                <span className="text-xs text-slate-400">Username</span>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">
-                  Sign-In
-                </span>
-                <span className="text-sm text-slate-300">Email</span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">Required</span>
+                <span className="text-xs text-slate-400">Email, Password</span>
               </div>
             </div>
           </motion.div>
@@ -94,8 +91,12 @@ export const Signup = () => {
             transition={{ duration: 0.4 }}
             className="order-1 lg:order-2 w-full flex justify-center lg:justify-end"
           >
-            <GlassPanel title="auth — signup" className="w-full max-w-md">
+            <GlassPanel title="auth / signup" className="w-full max-w-md">
               <div className="p-6 md:p-8 space-y-6 font-mono text-sm relative">
+                <div className="space-y-2 text-slate-400 text-xs md:text-sm mb-4">
+                  <p className="terminal-line">create account, then connect GitHub</p>
+                  <p className="terminal-line text-emerald-400/80">fill in fields to continue</p>
+                </div>
                 <div className="bg-black/20 rounded-lg border border-white/5 p-6 flex flex-col gap-4">
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <FormInput
@@ -153,7 +154,7 @@ export const Signup = () => {
         </div>
 
         <div className="mt-8 text-center">
-          <p className="text-sm text-slate-500">
+          <p className="text-xs text-slate-500">
             Already have an account?{' '}
             <Link
               to="/login"

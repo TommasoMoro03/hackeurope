@@ -38,12 +38,22 @@ class ExperimentPreviewUrlUpdate(BaseModel):
     preview_url: Optional[str] = None
 
 
+class SegmentPercentageUpdate(BaseModel):
+    id: int
+    percentage: float
+
+
+class SegmentPercentagesUpdate(BaseModel):
+    segments: List[SegmentPercentageUpdate]
+
+
 class ExperimentResponse(ExperimentBase):
     id: int
     project_id: int
     status: str
     computation_logic: Optional[str] = None
     preview_url: Optional[str] = None
+    pr_url: Optional[str] = None
     segments: List[SegmentResponse]
     created_at: datetime
 

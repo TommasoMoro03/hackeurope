@@ -43,6 +43,7 @@ interface Experiment {
   percentage: number;
   metrics: string;
   preview_url?: string;
+  pr_url?: string;
   segments: Segment[];
   created_at: string;
 }
@@ -201,7 +202,7 @@ export const Dashboard = () => {
             <div className="h-1 w-32 rounded-full bg-white/10 overflow-hidden">
               <div className="h-full w-1/3 bg-primary rounded-full animate-loading-bar" />
             </div>
-            <p className="text-sm text-slate-500">Loading project...</p>
+            <p className="text-xs text-slate-500">Loading project...</p>
           </div>
         </div>
       </AppBackground>
@@ -246,8 +247,9 @@ export const Dashboard = () => {
             if (showMergePR) {
               return (
                 <ExperimentMergePR
-                  experimentName={selectedExperiment!.name}
+                  experiment={selectedExperiment!}
                   onMerged={handlePRMerged}
+                  onExperimentUpdate={handleExperimentUpdate}
                 />
               );
             }

@@ -63,10 +63,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(userData);
       authService.setUserCache(userData);
 
-      toast.success('Login successful!');
+      toast.success('Signed in.');
       navigate('/dashboard');
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Login failed';
+      const message = error.response?.data?.detail || 'Invalid email or password.';
       toast.error(message);
       throw error;
     }
@@ -83,10 +83,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(userData);
       authService.setUserCache(userData);
 
-      toast.success('Account created successfully!');
+      toast.success('Account created. Connect GitHub to continue.');
       navigate('/dashboard');
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Signup failed';
+      const message = error.response?.data?.detail || 'Could not create account. Try again.';
       toast.error(message);
       throw error;
     }
@@ -103,10 +103,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(userData);
       authService.setUserCache(userData);
 
-      toast.success('Google login successful!');
+      toast.success('Signed in.');
       navigate('/dashboard');
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Google login failed';
+      const message = error.response?.data?.detail || 'Could not sign in with Google. Try again.';
       toast.error(message);
       throw error;
     }
@@ -120,7 +120,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       authService.clearTokens();
       setUser(null);
-      toast.success('Logged out successfully');
+      toast.success('Signed out.');
       navigate('/login');
     }
   };

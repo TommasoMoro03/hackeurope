@@ -361,7 +361,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                   <div className={cn('rounded-full bg-emerald-500/20', viewMode === 'mobile' ? 'size-2.5' : 'size-2')} />
                 </div>
                 <div className={cn('mx-auto flex-1 max-w-[200px] bg-black/20 rounded flex items-center justify-center text-slate-600 font-mono truncate', viewMode === 'mobile' ? 'h-4 text-[8px]' : 'h-3 text-[7px]')}>
-                  {controlSrc || '—'}
+                  {controlSrc || '-'}
                 </div>
               </div>
               <div className={cn('absolute inset-0 overflow-hidden', viewMode === 'mobile' ? 'top-8' : 'top-6')}>
@@ -447,7 +447,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                   <div className={cn('rounded-full bg-white/10', viewMode === 'mobile' ? 'size-2.5' : 'size-2')} />
                 </div>
                 <div className={cn('mx-auto flex-1 max-w-[200px] bg-primary/10 border border-primary/20 rounded flex items-center justify-center text-primary/70 font-mono truncate', viewMode === 'mobile' ? 'h-4 text-[8px]' : 'h-3 text-[7px]')}>
-                  {variantSrc || '—'}
+                  {variantSrc || '-'}
                 </div>
               </div>
               <div className={cn('absolute inset-0 overflow-hidden', viewMode === 'mobile' ? 'top-8' : 'top-6')}>

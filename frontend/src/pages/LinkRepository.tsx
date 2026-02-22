@@ -35,7 +35,7 @@ export const LinkRepository = () => {
     if (code) {
       handleOAuthCallback(code);
     } else {
-      setError('No authorization code found');
+      setError('Authorization failed. Please try connecting GitHub again.');
       setLoading(false);
     }
   }, [searchParams]);
@@ -52,7 +52,7 @@ export const LinkRepository = () => {
       sessionStorage.setItem('github_access_token', accessToken);
       setError(null);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to fetch repositories');
+      setError(err.response?.data?.detail || 'Could not load repositories. Try again.');
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,7 @@ export const LinkRepository = () => {
       const accessToken = sessionStorage.getItem('github_access_token');
 
       if (!accessToken) {
-        setError('Access token not found. Please try again.');
+        setError('Session expired. Please connect GitHub again.');
         return;
       }
 
@@ -77,7 +77,7 @@ export const LinkRepository = () => {
       sessionStorage.removeItem('github_access_token');
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to link repository');
+      setError(err.response?.data?.detail || 'Could not link repository. Try again.');
     } finally {
       setLinking(false);
     }
@@ -88,7 +88,7 @@ export const LinkRepository = () => {
       <AppBackground>
         <Navbar
           brandIcon={<Terminal className="w-4 h-4 text-white" />}
-          status={{ label: 'Loading', pulseColor: 'bg-amber-500' }}
+          status={{ label: 'Step 03 / 03', pulseColor: 'bg-amber-500' }}
         />
         <main className="flex-1 relative z-20 flex flex-col items-center justify-center p-6">
           <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -100,28 +100,28 @@ export const LinkRepository = () => {
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 text-[10px] uppercase tracking-widest font-semibold text-primary-glow mb-4">
                   <Github className="w-3 h-3" />
-                  Integration Protocol
+                  Step 03 / 03
                 </div>
                 <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl text-white leading-tight">
-                  Synchronize <br />
-                  <span className="italic text-primary-glow">Codebase</span>
+                  Link your <br />
+                  <span className="italic text-primary-glow">repository</span>
                 </h1>
-                <p className="font-display text-slate-400 max-w-md text-base md:text-lg font-light leading-relaxed pt-2">
-                  Establishing secure link with your repository...
+                <p className="font-display text-slate-400 max-w-md text-sm md:text-base font-light leading-relaxed pt-2">
+                  Connecting to GitHub and loading your repos...
                 </p>
               </div>
             </motion.div>
-            <GlassPanel title="github — link" className="w-full max-w-md">
+            <GlassPanel title="github / link" className="w-full max-w-md">
               <div className="p-6 md:p-8 space-y-6 font-mono text-sm">
                 <div className="space-y-2 text-slate-400 text-xs md:text-sm">
-                  <p className="terminal-line">linking repo for auto-PR on winners</p>
-                  <p className="terminal-line text-emerald-400/80">loading your repositories...</p>
+                  <p className="terminal-line">loading repositories with write access</p>
+                  <p className="terminal-line text-emerald-400/80">please wait...</p>
                 </div>
                 <div className="flex flex-col items-center justify-center py-8 gap-3">
                   <div className="h-1 w-28 rounded-full bg-white/10 overflow-hidden">
                     <div className="h-full w-1/3 bg-primary rounded-full animate-loading-bar" />
                   </div>
-                  <p className="text-slate-500 text-xs">Loading repositories...</p>
+                  <p className="text-slate-500 text-[10px]">Loading repositories...</p>
                 </div>
               </div>
             </GlassPanel>
@@ -138,8 +138,8 @@ export const LinkRepository = () => {
         <main className="flex-1 relative z-20 flex items-center justify-center p-6">
           <GlassPanel title="error" className="w-full max-w-md">
             <div className="p-8">
-              <h2 className="text-xl font-bold text-red-400 mb-2">Connection Error</h2>
-              <p className="text-slate-400 mb-6 text-sm">{error}</p>
+              <h2 className="text-lg font-bold text-red-400 mb-2">Connection Error</h2>
+              <p className="text-slate-400 mb-6 text-xs">{error}</p>
               <button
                 onClick={() => navigate('/dashboard')}
                 className="w-full bg-primary hover:bg-primary-glow text-white font-mono font-bold py-3 px-6 rounded glow-button flex items-center justify-center gap-2"
@@ -157,10 +157,10 @@ export const LinkRepository = () => {
   return (
     <AppBackground>
       {/* Nav */}
-      <Navbar
-        brandIcon={<Terminal className="w-4 h-4 text-white" />}
-        status={{ label: 'Repos Loaded' }}
-      />
+        <Navbar
+          brandIcon={<Terminal className="w-4 h-4 text-white" />}
+          status={{ label: 'Step 03 / 03' }}
+        />
 
       {/* Main */}
       <main className="flex-1 relative z-20 p-6">
@@ -174,24 +174,24 @@ export const LinkRepository = () => {
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 text-[10px] uppercase tracking-widest font-semibold text-primary-glow mb-4">
                 <Github className="w-3 h-3" />
-                Integration Protocol
+                Step 03 / 03
               </div>
               <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl text-white leading-tight">
-                Synchronize <br />
-                <span className="italic text-primary-glow">Codebase</span>
+                Link your <br />
+                <span className="italic text-primary-glow">repository</span>
               </h1>
-              <p className="font-display text-slate-400 max-w-md text-base md:text-lg font-light leading-relaxed pt-2">
-                Link your repo so we can auto-open PRs when a variant wins your A/B test. Read/write access required.
+              <p className="font-display text-slate-400 max-w-md text-sm md:text-base font-light leading-relaxed pt-2">
+                Pick the repo where A/B winners become PRs. We need write access to open branches.
               </p>
             </div>
-            <div className="space-y-4 pt-4 border-l border-white/10 pl-6">
-              <div className="flex flex-col gap-1">
+            <div className="space-y-3 pt-3 border-l border-white/10 pl-6">
+              <div className="flex flex-col gap-0.5">
                 <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">Requirement</span>
-                <span className="text-sm text-slate-300">Read/Write access to repository</span>
+                <span className="text-xs text-slate-400">Repo with read/write access</span>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">Security</span>
-                <span className="text-sm text-slate-300">256-bit Encrypted Token Exchange</span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">What we do</span>
+                <span className="text-xs text-slate-400">Open PRs when a variant wins</span>
               </div>
             </div>
           </motion.div>
@@ -203,9 +203,9 @@ export const LinkRepository = () => {
             transition={{ delay: 0.1 }}
           >
             {repos.length === 0 ? (
-              <GlassPanel title="github — no repos">
+              <GlassPanel title="github / no repos">
                 <div className="p-8 text-center">
-                  <p className="text-slate-400 mb-4">No repositories found with write access.</p>
+                  <p className="text-slate-400 mb-4 text-sm">No repos with write access found.</p>
                   <button
                     onClick={() => navigate('/dashboard')}
                     className="bg-primary hover:bg-primary-glow text-white font-mono font-bold py-3 px-6 rounded glow-button"
@@ -217,7 +217,7 @@ export const LinkRepository = () => {
             ) : (
               <div className="space-y-4">
                 <p className="text-[10px] uppercase tracking-widest text-slate-500 font-mono">
-                  Select repository to link
+                  Choose a repo
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {repos.map((repo, i) => (
@@ -276,10 +276,10 @@ export const LinkRepository = () => {
       <footer className="relative z-20 border-t border-white/5 py-4 px-6 md:px-8 flex justify-between items-center bg-background-dark/80 backdrop-blur">
         <button
           onClick={() => navigate('/dashboard')}
-          className="text-slate-500 hover:text-white font-mono text-xs uppercase tracking-widest transition-colors flex items-center gap-2"
+          className="text-slate-500 hover:text-white font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back
+          Back to Dashboard
         </button>
         <div className="flex gap-2">
           <div className="h-1 w-8 bg-white/10 rounded-full" />

@@ -61,7 +61,7 @@ export const ExperimentDetails = ({ experiment, onExperimentUpdate }: Experiment
 
   return (
     <div className="max-w-4xl space-y-6">
-      <GlassPanel title={`experiment — ${experiment.name}`}>
+      <GlassPanel title={`experiment / ${experiment.name}`}>
         <div className="p-6 space-y-6">
           <div className="flex items-center gap-2">
             <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">Preview URL</h3>

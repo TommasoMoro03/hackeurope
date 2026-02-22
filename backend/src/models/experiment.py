@@ -30,6 +30,9 @@ class Experiment(Base):
     # Preview URL for the application (e.g., https://myapp.com)
     preview_url = Column(String, nullable=True)
 
+    # PR URL when experiment implementation creates a pull request
+    pr_url = Column(String, nullable=True)
+
     # Winning segment id, can be null of course (at the beginning)
     winning_segment_id = Column(Integer, ForeignKey("segment.id", ondelete="SET NULL"), nullable=True)
 

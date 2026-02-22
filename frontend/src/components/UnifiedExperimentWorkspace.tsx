@@ -21,6 +21,7 @@ interface Experiment {
   percentage: number;
   metrics: string;
   preview_url?: string;
+  pr_url?: string;
   segments: Segment[];
   created_at: string;
 }

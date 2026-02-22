@@ -10,7 +10,7 @@ type ExpandedPane = 'control' | 'variant' | null;
 const MOBILE_VIEWPORT = 390; // Modern smartphone (iPhone 14, Pixel 7)
 const DESKTOP_IFRAME_WIDTH = 1440; // Laptop viewport (16:10)
 const DESKTOP_IFRAME_HEIGHT = 900;
-const DESKTOP_PANE_DISPLAY = 420; // Display width — larger for readability, fits two side-by-side
+const DESKTOP_PANE_DISPLAY = 420; // Display width: larger for readability, fits two side-by-side
 const MOBILE_IFRAME_HEIGHT = 844;
 
 interface SplitPreviewPanelProps {
@@ -166,7 +166,7 @@ export const SplitPreviewPanel = ({
                 : 'bg-primary/10 border border-primary/20 text-primary/70'
             )}
           >
-            {isLoading || !hasData ? (type === 'control' ? '—' : '—') : (src || '—')}
+            {isLoading || !hasData ? (type === 'control' ? '-' : '-') : (src || '-')}
           </div>
         </div>
         <div className={cn('absolute inset-0 overflow-hidden', viewMode === 'mobile' ? 'top-8' : 'top-6')}>

@@ -7,7 +7,7 @@ from src.models.project import Project
 from src.models.experiment import Experiment
 from src.models.segment import Segment
 from src.models.insight_data import InsightData
-from src.schemas.experiment import ExperimentCreate, ExperimentResponse, ExperimentPreviewUrlUpdate
+from src.schemas.experiment import ExperimentCreate, ExperimentResponse, ExperimentPreviewUrlUpdate, SegmentPercentagesUpdate
 from src.services.experiment_implementation_service import implement_experiment_sync
 from typing import List
 import threading
@@ -47,6 +47,7 @@ def create_experiment(
         description=experiment_data.description,
         percentage=experiment_data.percentage,
         metrics=experiment_data.metrics,
+        preview_url=experiment_data.preview_url,
         status="started"
     )
     db.add(new_experiment)
@@ -169,11 +170,14 @@ def get_experiment_status(
             detail="Experiment not found"
         )
 
-    return {
+    result = {
         "id": experiment.id,
         "name": experiment.name,
         "status": experiment.status
     }
+    if experiment.pr_url:
+        result["pr_url"] = experiment.pr_url
+    return result
 
 
 @router.get("/{experiment_id}/events")
@@ -253,6 +257,60 @@ def update_experiment_preview_url(
         )
 
     experiment.preview_url = body.preview_url
+    db.commit()
+    db.refresh(experiment)
+    return experiment
+
+
+@router.patch("/{experiment_id}/segment-percentages", response_model=ExperimentResponse)
+def update_segment_percentages(
+    experiment_id: int,
+    body: SegmentPercentagesUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Update traffic split percentages for experiment segments.
+    """
+    project = db.query(Project).filter(Project.user_id == current_user.id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No project linked"
+        )
+
+    experiment = db.query(Experiment).filter(
+        Experiment.id == experiment_id,
+        Experiment.project_id == project.id
+    ).first()
+
+    if not experiment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Experiment not found"
+        )
+
+    total = sum(s.percentage for s in body.segments)
+    if not (0.99 <= total <= 1.01):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Segment percentages must sum to 1.0 (100%). Current sum: {total}"
+        )
+
+    segment_ids = {s.id for s in experiment.segments}
+    for update in body.segments:
+        if update.id not in segment_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Segment {update.id} does not belong to this experiment"
+            )
+        seg = db.query(Segment).filter(
+            Segment.id == update.id,
+            Segment.experiment_id == experiment_id
+        ).first()
+        if seg:
+            seg.percentage = update.percentage
+
     db.commit()
     db.refresh(experiment)
     return experiment
@@ -356,12 +414,16 @@ def finish_experiment(
                 db_bg.commit()
 
         except Exception as e:
-            # On error, mark as failed
+            # On error, rollback failed transaction before any new queries
+            db_bg.rollback()
             print(f"Error analyzing experiment {experiment_id}: {str(e)}")
-            exp = db_bg.query(Experiment).filter(Experiment.id == experiment_id).first()
-            if exp:
-                exp.status = "failed"
-                db_bg.commit()
+            try:
+                exp = db_bg.query(Experiment).filter(Experiment.id == experiment_id).first()
+                if exp:
+                    exp.status = "failed"
+                    db_bg.commit()
+            except Exception:
+                db_bg.rollback()
         finally:
             db_bg.close()
 

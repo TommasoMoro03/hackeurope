@@ -5,7 +5,7 @@ Generates SQL queries, plots, insights, and determines winner.
 import json
 from typing import Dict, List, Any, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from anthropic import Anthropic
 from src.config import settings
 from src.models.experiment import Experiment
@@ -35,10 +35,14 @@ class ExperimentAnalysisService:
         if not experiment:
             raise ValueError(f"Experiment {experiment_id} not found")
 
-        # Get all events for this experiment
-        events = self.db.query(EventTracked).filter(
-            EventTracked.experiment_id == experiment_id
-        ).all()
+        # Get all events for this experiment (empty if event_tracked table missing)
+        try:
+            events = self.db.query(EventTracked).filter(
+                EventTracked.experiment_id == experiment_id
+            ).all()
+        except SQLAlchemyError:
+            self.db.rollback()
+            events = []
 
         # Build context for LLM
         context = self._build_analysis_context(experiment, events)

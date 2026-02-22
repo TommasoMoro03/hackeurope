@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { GlassPanel } from '@/components/ui/glass-panel';
+import { TrafficSplitSlider } from '@/components/TrafficSplitSlider';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/axios';
 
@@ -105,6 +106,34 @@ export const ExperimentDetailsCards = ({
               </svg>
             </button>
           </div>
+          <div className="space-y-1.5">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Traffic split: drag between A and B</p>
+            <TrafficSplitSlider
+              aPercent={(controlSegment?.percentage ?? 0.5) * 100}
+              onSplitChange={async (aPercent) => {
+                const a = Math.max(0, Math.min(100, aPercent)) / 100;
+                const b = 1 - a;
+                try {
+                  await api.patch(`/api/experiments/${experiment.id}/segment-percentages`, {
+                    segments: [
+                      { id: controlSegment!.id, percentage: a },
+                      { id: variantSegment!.id, percentage: b },
+                    ],
+                  });
+                  onExperimentUpdate?.({
+                    segments: [
+                      { ...controlSegment!, percentage: a },
+                      { ...variantSegment!, percentage: b },
+                    ],
+                  });
+                } catch {
+                  // ignore
+                }
+              }}
+              aLabel={controlSegment?.name ?? 'A'}
+              bLabel={variantSegment?.name ?? 'B'}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="p-2 rounded-lg border border-white/5 bg-black/20">
               <p className="text-[10px] text-slate-500">Coverage</p>
@@ -113,7 +142,7 @@ export const ExperimentDetailsCards = ({
             <div className="p-2 rounded-lg border border-white/5 bg-black/20">
               <p className="text-[10px] text-slate-500">Metrics</p>
               <p className="text-xs text-white font-mono truncate" title={experiment.metrics}>
-                {experiment.metrics || '—'}
+                {experiment.metrics || '-'}
               </p>
             </div>
           </div>
@@ -143,37 +172,6 @@ export const ExperimentDetailsCards = ({
           )}
         </div>
       </GlassPanel>
-
-      {/* Segments: A % | B % — minimal */}
-      <div>
-        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">
-          Traffic split — % of users per variant
-        </p>
-        <div className="grid grid-cols-2 gap-1.5">
-        <div
-          className="rounded-lg border border-white/5 bg-black/20 px-2.5 py-2"
-          title={controlSegment?.instructions}
-        >
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[10px] text-slate-500">A</span>
-            <span className="text-sm font-mono text-white tabular-nums">
-              {((controlSegment?.percentage ?? 0) * 100).toFixed(0)}%
-            </span>
-          </div>
-        </div>
-        <div
-          className="rounded-lg border border-primary/20 bg-black/20 px-2.5 py-2"
-          title={variantSegment?.instructions}
-        >
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[10px] text-slate-500">B</span>
-            <span className="text-sm font-mono text-primary-glow tabular-nums">
-              {((variantSegment?.percentage ?? 0) * 100).toFixed(0)}%
-            </span>
-          </div>
-        </div>
-        </div>
-      </div>
 
       {showUrlPopup && (
         <>

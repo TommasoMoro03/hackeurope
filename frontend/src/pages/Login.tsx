@@ -62,14 +62,14 @@ export const Login = () => {
                 Authentication
               </div>
               <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl text-white leading-tight">
-                A/B testing has <br />
-                <span className="italic text-primary-glow">never been easier</span>
+                Where your winners <br />
+                <span className="italic text-primary-glow">get merged</span>
               </h1>
               <p className="font-display text-slate-400 max-w-md text-base md:text-lg font-light leading-relaxed pt-2">
-                Sign in to run agentic A/B tests, track experiments, and auto-PR winning variants.
+                Sign in to run A/B tests. AI builds variants. PRs ship winners.
               </p>
               <p className="font-display text-slate-400 max-w-md text-base font-light leading-relaxed pt-4 border-l border-white/10 pl-6">
-                Let AI do the subtle variations—as you see your conversions increase.
+                Not stuck in a dashboard. Merge when ready.
               </p>
             </div>
           </motion.div>
@@ -81,12 +81,12 @@ export const Login = () => {
             transition={{ duration: 0.4 }}
             className="order-1 lg:order-2 w-full flex justify-center lg:justify-end"
           >
-            <GlassPanel title="auth — login" className="w-full max-w-md">
+            <GlassPanel title="auth / login" className="w-full max-w-md">
               <div className="p-6 md:p-8 space-y-6 font-mono text-sm relative">
                 {/* Terminal lines */}
                 <div className="space-y-2 text-slate-400 text-xs md:text-sm">
-                  <p className="terminal-line">agentic A/B testing ready</p>
-                  <p className="terminal-line">define goals → run experiments → auto-PR winners</p>
+                  <p className="terminal-line">winners become PRs, not forgotten dashboards</p>
+                  <p className="terminal-line">AI variants, run test, auto-PR winner</p>
                   <p className="terminal-line text-emerald-400/80">sign in to continue</p>
                 </div>
 

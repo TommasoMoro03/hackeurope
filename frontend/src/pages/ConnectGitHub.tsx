@@ -18,7 +18,7 @@ export const ConnectGitHub = () => {
       const response = await api.get('/api/github/link');
       window.location.href = response.data.auth_url;
     } catch (err) {
-      setError('Failed to initiate GitHub connection');
+      setError('Could not start GitHub connection. Try again.');
     } finally {
       setIsLoading(false);
     }
@@ -28,7 +28,7 @@ export const ConnectGitHub = () => {
     <AppBackground>
       <Navbar
         brandIcon={<Terminal className="w-4 h-4 text-white" />}
-        status={{ label: 'Step 01/03' }}
+        status={{ label: 'Step 02 / 03' }}
       />
 
       <main className="flex-1 relative z-20 flex flex-col items-center justify-center p-6">
@@ -43,17 +43,17 @@ export const ConnectGitHub = () => {
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 text-[10px] uppercase tracking-widest font-semibold text-primary-glow mb-4">
                 <Github className="w-3 h-3" />
-                Integration Protocol
+                Step 02 / 03
               </div>
               <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl text-white leading-tight">
                 Connect <br />
                 <span className="italic text-primary-glow">GitHub</span>
               </h1>
-              <p className="font-display text-slate-400 max-w-md text-base md:text-lg font-light leading-relaxed pt-2">
-                Link your repository so we can auto-open PRs when a variant wins your A/B test. Read/write access required.
+              <p className="font-display text-slate-400 max-w-md text-sm md:text-base font-light leading-relaxed pt-2">
+                Authorize with GitHub so we can open PRs for winning variants. You choose the repo next.
               </p>
-              <p className="font-display text-slate-400 max-w-md text-base font-light leading-relaxed pt-4 border-l border-white/10 pl-6">
-                Let AI do the subtle variations—as you see your conversions increase.
+              <p className="font-display text-slate-400 max-w-md text-xs font-light leading-relaxed pt-3 border-l border-white/10 pl-6">
+                Read/write access needed for auto-PR.
               </p>
             </div>
           </motion.div>
@@ -65,11 +65,11 @@ export const ConnectGitHub = () => {
             transition={{ duration: 0.4 }}
             className="order-1 lg:order-2 w-full flex justify-center lg:justify-end"
           >
-            <GlassPanel title="github — connect" className="w-full max-w-md">
+            <GlassPanel title="github / connect" className="w-full max-w-md">
               <div className="p-6 md:p-8 space-y-6 font-mono text-sm relative">
                 <div className="space-y-2 text-slate-400 text-xs md:text-sm">
-                  <p className="terminal-line">linking repo for auto-PR on winners</p>
-                  <p className="terminal-line text-emerald-400/80">authorize with GitHub to continue</p>
+                  <p className="terminal-line">authorize GitHub for auto-PR on winners</p>
+                  <p className="terminal-line text-emerald-400/80">click below to continue</p>
                 </div>
 
                 <div className="bg-black/20 rounded-lg border border-white/5 p-6 flex flex-col items-center gap-4">
@@ -77,8 +77,8 @@ export const ConnectGitHub = () => {
                     <Github className="w-8 h-8 text-white" />
                   </div>
                   <div className="text-center">
-                    <h3 className="text-white font-bold mb-1">GitHub Integration</h3>
-                    <p className="text-xs text-slate-500">Allow access to your repositories</p>
+                    <h3 className="text-white font-bold mb-1 text-sm">Connect GitHub</h3>
+                    <p className="text-[10px] text-slate-500">Grant repo access for PR creation</p>
                   </div>
                   {error && (
                     <p className="text-sm text-red-400">{error}</p>
@@ -109,7 +109,7 @@ export const ConnectGitHub = () => {
         <div className="mt-8 text-center">
           <Link
             to="/dashboard"
-            className="text-sm text-slate-500 hover:text-white transition-colors"
+            className="text-xs text-slate-500 hover:text-white transition-colors"
           >
             ← Back to Dashboard
           </Link>

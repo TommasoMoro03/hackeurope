@@ -131,8 +131,9 @@ def implement_experiment_sync(experiment_id: int, db: Session):
 
         print(f"PR created: {pr_result['pr_url']}")
 
-        # Update status to active when complete
-        experiment.status = "active"
+        # Store PR URL and set status so user can review before merging
+        experiment.pr_url = pr_result["pr_url"]
+        experiment.status = "pr_created"
         db.commit()
 
     except Exception as e:

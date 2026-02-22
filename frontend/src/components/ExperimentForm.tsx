@@ -1,6 +1,7 @@
 import { Button } from '@/components/Button';
 import { useState } from 'react';
 import { GlassPanel } from '@/components/ui/glass-panel';
+import { TrafficSplitSlider } from '@/components/TrafficSplitSlider';
 import { cn } from '@/lib/utils';
 import { Sparkles } from 'lucide-react';
 
@@ -121,6 +122,24 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
               </div>
 
               <div className="space-y-1.5">
+                <label className={labelStyles}>Traffic split: drag between A and B</label>
+                <TrafficSplitSlider
+                  aPercent={(form.segments[0]?.percentage ?? 0.5) * 100}
+                  onSplitChange={(aPercent) => {
+                    const a = Math.max(0, Math.min(100, aPercent)) / 100;
+                    const b = 1 - a;
+                    const newSegments = [...form.segments];
+                    newSegments[0] = { ...newSegments[0], percentage: a };
+                    newSegments[1] = { ...newSegments[1], percentage: b };
+                    setForm({ ...form, segments: newSegments });
+                    validatePercentages(newSegments);
+                  }}
+                  aLabel={form.segments[0]?.name ?? 'A'}
+                  bLabel={form.segments[1]?.name ?? 'B'}
+                />
+              </div>
+
+              <div className="space-y-1.5">
                 <label className={labelStyles}>Metrics to Track</label>
                 <textarea
                   value={form.metrics}
@@ -174,19 +193,6 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
                   />
                 </div>
                 <div>
-                  <label className={labelStyles}>Traffic %</label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    max="100"
-                    value={Math.round((form.segments[0]?.percentage ?? 0.5) * 100)}
-                    onChange={(e) => handleSegmentChange(0, 'percentage', (parseFloat(e.target.value) || 0) / 100)}
-                    className={inputStyles}
-                    required
-                  />
-                </div>
-                <div>
                   <label className={labelStyles}>Instructions for AI</label>
                   <textarea
                     value={form.segments[0]?.instructions ?? ''}
@@ -216,19 +222,6 @@ export const ExperimentForm = ({ onSubmit, layout = 'default', percentageError: 
                     onChange={(e) => handleSegmentChange(1, 'name', e.target.value)}
                     className={inputStyles}
                     placeholder="Variant B / Treatment"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className={labelStyles}>Traffic %</label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    max="100"
-                    value={Math.round((form.segments[1]?.percentage ?? 0.5) * 100)}
-                    onChange={(e) => handleSegmentChange(1, 'percentage', (parseFloat(e.target.value) || 0) / 100)}
-                    className={inputStyles}
                     required
                   />
                 </div>
