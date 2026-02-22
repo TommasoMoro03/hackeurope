@@ -33,16 +33,17 @@ interface ExperimentIterationProps {
   experimentId: number;
   experimentName: string;
   onClose: () => void;
-  onCreateExperiment?: (data: any) => void;
+  onAcceptSuggestion?: (data: any) => void;
 }
 
 export const ExperimentIteration = ({
   experimentId,
   experimentName,
   onClose,
-  onCreateExperiment
+  onAcceptSuggestion
 }: ExperimentIterationProps) => {
   const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<IterationData | null>(null);
   const [hoveredSegment, setHoveredSegment] = useState<number | null>(null);
@@ -54,25 +55,32 @@ export const ExperimentIteration = ({
   const fetchIteration = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await api.post(`/api/experiments/${experimentId}/iterate`);
       setSuggestion(response.data.suggestion);
-      setError(null);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to generate iteration');
     } finally {
       setLoading(false);
+      setRegenerating(false);
     }
   };
 
-  const handleCreateExperiment = () => {
+  const handleRegenerate = () => {
+    setRegenerating(true);
+    fetchIteration();
+  };
+
+  const handleAccept = () => {
     if (!suggestion) return;
 
-    // Transform suggestion into experiment creation format
+    // Transform suggestion into experiment form data format
     const experimentData = {
       name: suggestion.experiment.name,
       description: suggestion.experiment.description,
       metrics: suggestion.experiment.metrics,
       percentage: 1.0, // 100% traffic
+      numSegments: suggestion.segments.length,
       preview_url: '',
       segments: suggestion.segments.map(seg => ({
         name: seg.name,
@@ -81,8 +89,8 @@ export const ExperimentIteration = ({
       }))
     };
 
-    if (onCreateExperiment) {
-      onCreateExperiment(experimentData);
+    if (onAcceptSuggestion) {
+      onAcceptSuggestion(experimentData);
     }
     onClose();
   };
@@ -115,7 +123,7 @@ export const ExperimentIteration = ({
 
         {/* Content */}
         <div className="p-6">
-          {loading && (
+          {(loading || regenerating) && (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="relative mb-6">
                 <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600"></div>
@@ -124,8 +132,12 @@ export const ExperimentIteration = ({
                 </svg>
               </div>
               <div className="space-y-2 text-center">
-                <p className="text-gray-700 font-medium">Analyzing results...</p>
-                <p className="text-sm text-gray-500">Generating next experiment suggestion</p>
+                <p className="text-gray-700 font-medium">
+                  {regenerating ? 'Regenerating suggestion...' : 'Analyzing results...'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {regenerating ? 'Creating a new experiment proposal' : 'Generating next experiment suggestion'}
+                </p>
               </div>
             </div>
           )}
@@ -143,7 +155,7 @@ export const ExperimentIteration = ({
             </div>
           )}
 
-          {!loading && !error && suggestion && (
+          {!loading && !regenerating && !error && suggestion && (
             <div className="space-y-6">
               {/* Rational */}
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5">
@@ -241,22 +253,34 @@ export const ExperimentIteration = ({
               </div>
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                 <button
-                  onClick={onClose}
-                  className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateExperiment}
-                  className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl font-medium flex items-center gap-2"
+                  onClick={handleRegenerate}
+                  disabled={regenerating}
+                  className="px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-all font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  Create This Experiment
+                  Regenerate
                 </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={onClose}
+                    className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAccept}
+                    className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl font-medium flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Accept & Fill Form
+                  </button>
+                </div>
               </div>
             </div>
           )}
