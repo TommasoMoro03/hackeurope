@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
 
 from src.database import Base
 
@@ -11,10 +10,11 @@ class EventTracked(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # Foreign keys
-    project_id = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"), nullable=False, index=True)
-    experiment_id = Column(Integer, ForeignKey("experiment.id", ondelete="CASCADE"), nullable=False, index=True)
-    segment_id = Column(Integer, ForeignKey("segment.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Plain integer columns — FK constraints exist at DB level,
+    # but the webhook-listener doesn't load the related ORM models.
+    project_id = Column(Integer, nullable=False, index=True)
+    experiment_id = Column(Integer, nullable=False, index=True)
+    segment_id = Column(Integer, nullable=False, index=True)
 
     # Event payload
     event_json = Column(JSONB, nullable=False)
