@@ -8,9 +8,9 @@ type ExpandedPane = 'control' | 'variant' | null;
 
 // Realistic viewport dimensions (CSS pixels)
 const MOBILE_VIEWPORT = 390; // Modern smartphone (iPhone 14, Pixel 7)
-const DESKTOP_IFRAME_WIDTH = 1280; // Actual viewport so page renders desktop layout
-const DESKTOP_IFRAME_HEIGHT = 720;
-const DESKTOP_PANE_DISPLAY = 380; // Confined display width (fits two side-by-side)
+const DESKTOP_IFRAME_WIDTH = 1440; // Laptop viewport (16:10)
+const DESKTOP_IFRAME_HEIGHT = 900;
+const DESKTOP_PANE_DISPLAY = 420; // Display width — larger for readability, fits two side-by-side
 const MOBILE_IFRAME_HEIGHT = 844;
 
 interface SplitPreviewPanelProps {
@@ -109,7 +109,9 @@ export const SplitPreviewPanel = ({
       </div>
       <div
         className={cn(
-          'flex-1 overflow-hidden relative bg-[#0e0c1a] min-h-[280px] min-w-0 transition-shadow',
+          'overflow-hidden relative bg-[#0e0c1a] min-w-0 transition-shadow',
+          viewMode === 'mobile' && 'min-h-[280px] flex-1',
+          viewMode === 'desktop' && 'aspect-[16/10]',
           viewMode === 'mobile'
             ? 'rounded-[1.75rem] border-8 border-zinc-800/90 shadow-xl'
             : 'rounded-xl',
@@ -125,35 +127,40 @@ export const SplitPreviewPanel = ({
       >
         <div
           className={cn(
-            'absolute inset-x-0 top-0 h-8 flex items-center px-3 gap-2 z-10',
+            'absolute inset-x-0 top-0 flex items-center px-3 gap-2 z-10',
+            viewMode === 'mobile' ? 'h-8' : 'h-6',
             type === 'control'
               ? 'bg-[#1a1829] border-b border-white/5'
               : 'bg-[#1a1829] border-b border-primary/20'
           )}
         >
-          <div className="flex gap-1.5">
+          <div className={cn('flex gap-1.5', viewMode === 'desktop' && 'gap-1')}>
             <div
               className={cn(
-                'size-2.5 rounded-full',
+                'rounded-full',
+                viewMode === 'mobile' ? 'size-2.5' : 'size-2',
                 type === 'control' ? 'bg-red-500/20' : 'bg-white/10'
               )}
             />
             <div
               className={cn(
-                'size-2.5 rounded-full',
+                'rounded-full',
+                viewMode === 'mobile' ? 'size-2.5' : 'size-2',
                 type === 'control' ? 'bg-amber-500/20' : 'bg-white/10'
               )}
             />
             <div
               className={cn(
-                'size-2.5 rounded-full',
+                'rounded-full',
+                viewMode === 'mobile' ? 'size-2.5' : 'size-2',
                 type === 'control' ? 'bg-emerald-500/20' : 'bg-white/10'
               )}
             />
           </div>
           <div
             className={cn(
-              'mx-auto flex-1 max-w-[200px] h-4 rounded text-[8px] flex items-center justify-center font-mono truncate',
+              'mx-auto flex-1 max-w-[200px] rounded flex items-center justify-center font-mono truncate',
+              viewMode === 'mobile' ? 'h-4 text-[8px]' : 'h-3 text-[7px]',
               type === 'control'
                 ? 'bg-black/20 text-slate-600'
                 : 'bg-primary/10 border border-primary/20 text-primary/70'
@@ -162,7 +169,7 @@ export const SplitPreviewPanel = ({
             {isLoading || !hasData ? (type === 'control' ? '—' : '—') : (src || '—')}
           </div>
         </div>
-        <div className="absolute inset-0 top-8 overflow-hidden">
+        <div className={cn('absolute inset-0 overflow-hidden', viewMode === 'mobile' ? 'top-8' : 'top-6')}>
           {isLoading || !hasData ? (
             <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 bg-black/40">
               <Loader2 className="w-10 h-10 text-primary-glow animate-spin shrink-0" />
@@ -272,9 +279,9 @@ export const SplitPreviewPanel = ({
                         maxHeight: '85vh',
                       }
                     : {
-                        width: Math.min(DESKTOP_IFRAME_WIDTH, 1280),
+                        width: Math.min(DESKTOP_IFRAME_WIDTH, 1440),
                         maxWidth: '95vw',
-                        height: Math.min(DESKTOP_IFRAME_HEIGHT, 800),
+                        height: Math.min(DESKTOP_IFRAME_HEIGHT, 900),
                         maxHeight: '85vh',
                       }
                 }

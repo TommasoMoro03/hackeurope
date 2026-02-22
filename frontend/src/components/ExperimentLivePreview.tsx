@@ -25,9 +25,9 @@ type ExpandedPane = 'control' | 'variant' | null;
 
 // Realistic viewport dimensions (CSS pixels)
 const MOBILE_VIEWPORT = 390; // Modern smartphone (iPhone 14, Pixel 7)
-const DESKTOP_IFRAME_WIDTH = 1280; // Actual viewport so page renders desktop layout
-const DESKTOP_IFRAME_HEIGHT = 720;
-const DESKTOP_PANE_DISPLAY = 380; // Confined display width
+const DESKTOP_IFRAME_WIDTH = 1440; // Laptop viewport (16:10)
+const DESKTOP_IFRAME_HEIGHT = 900;
+const DESKTOP_PANE_DISPLAY = 420; // Display width
 const MOBILE_IFRAME_HEIGHT = 844;
 
 const PreviewSkeleton = () => (
@@ -116,9 +116,9 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                         maxHeight: '85vh',
                       }
                     : {
-                        width: Math.min(DESKTOP_IFRAME_WIDTH, 1280),
+                        width: Math.min(DESKTOP_IFRAME_WIDTH, 1440),
                         maxWidth: '95vw',
-                        height: Math.min(DESKTOP_IFRAME_HEIGHT, 800),
+                        height: Math.min(DESKTOP_IFRAME_HEIGHT, 900),
                         maxHeight: '85vh',
                       }
                 }
@@ -345,24 +345,26 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
             </div>
             <div
               className={cn(
-                'flex-1 overflow-hidden relative bg-[#0e0c1a] min-h-[300px] min-w-0 transition-shadow',
+                'overflow-hidden relative bg-[#0e0c1a] min-w-0 transition-shadow',
+                viewMode === 'mobile' && 'flex-1 min-h-[300px]',
+                viewMode === 'desktop' && 'aspect-[16/10]',
                 viewMode === 'mobile'
                   ? 'rounded-[1.75rem] border-8 border-zinc-800/90 shadow-xl'
                   : 'rounded-xl border border-white/10'
               )}
               style={{ width: paneWidth, minWidth: 0, maxWidth: '100%' }}
             >
-              <div className="absolute inset-x-0 top-0 h-8 bg-[#1a1829] border-b border-white/5 flex items-center px-3 gap-2 z-10">
-                <div className="flex gap-1.5">
-                  <div className="size-2.5 rounded-full bg-red-500/20" />
-                  <div className="size-2.5 rounded-full bg-amber-500/20" />
-                  <div className="size-2.5 rounded-full bg-emerald-500/20" />
+              <div className={cn('absolute inset-x-0 top-0 bg-[#1a1829] border-b border-white/5 flex items-center px-3 gap-2 z-10', viewMode === 'mobile' ? 'h-8' : 'h-6')}>
+                <div className={cn('flex gap-1.5', viewMode === 'desktop' && 'gap-1')}>
+                  <div className={cn('rounded-full bg-red-500/20', viewMode === 'mobile' ? 'size-2.5' : 'size-2')} />
+                  <div className={cn('rounded-full bg-amber-500/20', viewMode === 'mobile' ? 'size-2.5' : 'size-2')} />
+                  <div className={cn('rounded-full bg-emerald-500/20', viewMode === 'mobile' ? 'size-2.5' : 'size-2')} />
                 </div>
-                <div className="mx-auto flex-1 max-w-[200px] h-4 bg-black/20 rounded text-[8px] flex items-center justify-center text-slate-600 font-mono truncate">
+                <div className={cn('mx-auto flex-1 max-w-[200px] bg-black/20 rounded flex items-center justify-center text-slate-600 font-mono truncate', viewMode === 'mobile' ? 'h-4 text-[8px]' : 'h-3 text-[7px]')}>
                   {controlSrc || '—'}
                 </div>
               </div>
-              <div className="absolute inset-0 top-8 overflow-hidden">
+              <div className={cn('absolute inset-0 overflow-hidden', viewMode === 'mobile' ? 'top-8' : 'top-6')}>
                 {controlSrc ? (
                   viewMode === 'desktop' ? (
                     <div
@@ -429,24 +431,26 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
             </div>
             <div
               className={cn(
-                'flex-1 overflow-hidden relative bg-[#0e0c1a] shadow-[0_0_50px_rgba(109,40,217,0.15)] min-h-[300px] min-w-0 transition-shadow',
+                'overflow-hidden relative bg-[#0e0c1a] shadow-[0_0_50px_rgba(109,40,217,0.15)] min-w-0 transition-shadow',
+                viewMode === 'mobile' && 'flex-1 min-h-[300px]',
+                viewMode === 'desktop' && 'aspect-[16/10]',
                 viewMode === 'mobile'
                   ? 'rounded-[1.75rem] border-8 border-zinc-800/90'
                   : 'rounded-xl border border-primary/30'
               )}
               style={{ width: paneWidth, minWidth: 0, maxWidth: '100%' }}
             >
-              <div className="absolute inset-x-0 top-0 h-8 bg-[#1a1829] border-b border-primary/20 flex items-center px-3 gap-2 z-10">
-                <div className="flex gap-1.5">
-                  <div className="size-2.5 rounded-full bg-white/10" />
-                  <div className="size-2.5 rounded-full bg-white/10" />
-                  <div className="size-2.5 rounded-full bg-white/10" />
+              <div className={cn('absolute inset-x-0 top-0 bg-[#1a1829] border-b border-primary/20 flex items-center px-3 gap-2 z-10', viewMode === 'mobile' ? 'h-8' : 'h-6')}>
+                <div className={cn('flex gap-1.5', viewMode === 'desktop' && 'gap-1')}>
+                  <div className={cn('rounded-full bg-white/10', viewMode === 'mobile' ? 'size-2.5' : 'size-2')} />
+                  <div className={cn('rounded-full bg-white/10', viewMode === 'mobile' ? 'size-2.5' : 'size-2')} />
+                  <div className={cn('rounded-full bg-white/10', viewMode === 'mobile' ? 'size-2.5' : 'size-2')} />
                 </div>
-                <div className="mx-auto flex-1 max-w-[200px] h-4 bg-primary/10 border border-primary/20 rounded text-[8px] flex items-center justify-center text-primary/70 font-mono truncate">
+                <div className={cn('mx-auto flex-1 max-w-[200px] bg-primary/10 border border-primary/20 rounded flex items-center justify-center text-primary/70 font-mono truncate', viewMode === 'mobile' ? 'h-4 text-[8px]' : 'h-3 text-[7px]')}>
                   {variantSrc || '—'}
                 </div>
               </div>
-              <div className="absolute inset-0 top-8 overflow-hidden">
+              <div className={cn('absolute inset-0 overflow-hidden', viewMode === 'mobile' ? 'top-8' : 'top-6')}>
                 {variantSrc ? (
                   viewMode === 'desktop' ? (
                     <div
