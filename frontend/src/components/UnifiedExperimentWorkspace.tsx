@@ -9,6 +9,7 @@ import { ExperimentPRFlowCards } from '@/components/ExperimentPRFlowCards';
 import { SplitPreviewPanel } from '@/components/SplitPreviewPanel';
 import { CreationCompletePanel } from '@/components/CreationCompletePanel';
 import { ExperimentFinishing } from '@/components/ExperimentFinishing';
+import { ExperimentResultsPanel } from '@/components/ExperimentResultsPanel';
 import type { ExperimentFormData } from '@/components/ExperimentForm';
 import type { Experiment } from '@/types/experiment';
 
@@ -161,7 +162,6 @@ export const UnifiedExperimentWorkspace = ({
               onExperimentUpdate={onExperimentUpdate}
             />
           )}
-          <ExperimentDataCard experimentId={selectedExperiment.id} />
         </>
       );
     }
@@ -170,6 +170,25 @@ export const UnifiedExperimentWorkspace = ({
   };
 
   const renderRightPreview = () => {
+    // Show results panel when finishing or finished
+    if (finishingExperiment) {
+      return (
+        <ExperimentResultsPanel
+          experimentId={finishingExperiment.id}
+          isLoading={true}
+        />
+      );
+    }
+
+    if (selectedExperiment?.status === 'finished') {
+      return (
+        <ExperimentResultsPanel
+          experimentId={selectedExperiment.id}
+          isLoading={false}
+        />
+      );
+    }
+
     if (mode === 'loading') {
       if (isCreationComplete && creatingExperiment) {
         const handleUpdate = (updates: { preview_url?: string }) => {
@@ -228,28 +247,33 @@ export const UnifiedExperimentWorkspace = ({
         : undefined;
       const hasPreviewData = !!baseUrl;
       return (
-        <SplitPreviewPanel
-          mode={hasPreviewData ? 'live' : 'loading'}
-          controlLabel={controlSeg?.name ?? 'Control'}
-          variantLabel={variantSeg?.name ?? 'Variant B'}
-          controlUrl={controlUrl}
-          variantUrl={variantUrl}
-          controlData={`${((controlSeg?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
-          variantData={`${((variantSeg?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
-          controlInstructions={controlSeg?.instructions}
-          variantInstructions={variantSeg?.instructions}
-          controlPercentage={controlSeg?.percentage}
-          variantPercentage={variantSeg?.percentage}
-          metrics={selectedExperiment.metrics}
-          description={selectedExperiment.description}
-        />
+        <>
+          <div className="shrink-0">
+            <ExperimentDataCard experimentId={selectedExperiment.id} />
+          </div>
+          <SplitPreviewPanel
+            mode={hasPreviewData ? 'live' : 'loading'}
+            controlLabel={controlSeg?.name ?? 'Control'}
+            variantLabel={variantSeg?.name ?? 'Variant B'}
+            controlUrl={controlUrl}
+            variantUrl={variantUrl}
+            controlData={`${((controlSeg?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
+            variantData={`${((variantSeg?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
+            controlInstructions={controlSeg?.instructions}
+            variantInstructions={variantSeg?.instructions}
+            controlPercentage={controlSeg?.percentage}
+            variantPercentage={variantSeg?.percentage}
+            metrics={selectedExperiment.metrics}
+            description={selectedExperiment.description}
+          />
+        </>
       );
     }
 
     return null;
   };
 
-  const showSplitPreview = mode === 'loading' || (mode === 'experiment' && selectedExperiment);
+  const showSplitPreview = mode === 'loading' || (mode === 'experiment' && selectedExperiment) || finishingExperiment || selectedExperiment?.status === 'finished';
 
   if (mode === 'planning') {
     return (
@@ -266,7 +290,7 @@ export const UnifiedExperimentWorkspace = ({
       </aside>
 
       {showSplitPreview && (
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden min-h-[320px]">
+        <main className="flex-1 flex flex-col gap-3 min-w-0 overflow-y-auto scrollbar-hide min-h-[320px]">
           {renderRightPreview()}
         </main>
       )}
