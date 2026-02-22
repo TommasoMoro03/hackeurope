@@ -136,7 +136,11 @@ export const ExperimentDetailsCards = ({
       </GlassPanel>
 
       {/* Segments: A % | B % — minimal */}
-      <div className="grid grid-cols-2 gap-1.5">
+      <div>
+        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">
+          Traffic split — % of users per variant
+        </p>
+        <div className="grid grid-cols-2 gap-1.5">
         <div
           className="rounded-lg border border-white/5 bg-black/20 px-2.5 py-2"
           title={controlSegment?.instructions}
@@ -158,6 +162,7 @@ export const ExperimentDetailsCards = ({
               {((variantSegment?.percentage ?? 0) * 100).toFixed(0)}%
             </span>
           </div>
+        </div>
         </div>
       </div>
 

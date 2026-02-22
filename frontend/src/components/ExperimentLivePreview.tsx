@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import {
-  SquareSplitHorizontal,
   Smartphone,
   Monitor,
   Sparkles,
@@ -10,6 +10,8 @@ import {
   Zap,
   TrendingUp,
   Loader2,
+  X,
+  Maximize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +20,15 @@ interface ExperimentLivePreviewProps {
   project?: { github_url: string };
 }
 
-type ViewMode = 'split' | 'mobile' | 'desktop';
+type ViewMode = 'mobile' | 'desktop';
+type ExpandedPane = 'control' | 'variant' | null;
+
+// Realistic viewport dimensions (CSS pixels)
+const MOBILE_VIEWPORT = 390; // Modern smartphone (iPhone 14, Pixel 7)
+const DESKTOP_IFRAME_WIDTH = 1280; // Actual viewport so page renders desktop layout
+const DESKTOP_IFRAME_HEIGHT = 720;
+const DESKTOP_PANE_DISPLAY = 380; // Confined display width
+const MOBILE_IFRAME_HEIGHT = 844;
 
 const PreviewSkeleton = () => (
   <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 bg-black/40">
@@ -37,7 +47,8 @@ const PreviewSkeleton = () => (
 );
 
 export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('split');
+  const [viewMode, setViewMode] = useState<ViewMode>('mobile');
+  const [expanded, setExpanded] = useState<ExpandedPane>(null);
   const [controlUrl, setControlUrl] = useState('');
   const [variantUrl, setVariantUrl] = useState('');
   const [designPrompt, setDesignPrompt] = useState('');
@@ -48,15 +59,101 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
   const controlSrc = controlUrl.trim() || undefined;
   const variantSrc = variantUrl.trim() || undefined;
 
-  const getPreviewWidth = () => {
-    if (viewMode === 'split') return undefined;
-    if (viewMode === 'mobile') return 375;
-    return undefined; // desktop = full
-  };
-  const previewWidth = getPreviewWidth();
+  const desktopScale = DESKTOP_PANE_DISPLAY / DESKTOP_IFRAME_WIDTH;
+  const paneWidth = viewMode === 'mobile' ? MOBILE_VIEWPORT : DESKTOP_PANE_DISPLAY;
+
+  const expandedSrc = expanded === 'control' ? controlSrc : expanded === 'variant' ? variantSrc : undefined;
+  const expandedLabel = expanded === 'control' ? 'Original Baseline' : expanded === 'variant' ? 'AI Generated' : '';
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setExpanded(null);
+    };
+    if (expanded) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'auto';
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [expanded]);
 
   return (
-    <div className="flex flex-1 min-h-0 overflow-hidden">
+    <div className="flex flex-1 min-h-0 overflow-hidden relative">
+      <AnimatePresence mode="wait">
+        {expanded && expandedSrc && (
+          <motion.div
+            key="expand-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+            className="fixed inset-0 z-[90]"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setExpanded(null)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-md"
+              aria-hidden
+            />
+            <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 4 }}
+                transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  'pointer-events-auto flex flex-col relative overflow-hidden bg-[#0e0c1a] shadow-[0_0_80px_rgba(109,40,217,0.3)]',
+                  viewMode === 'mobile' ? 'rounded-[2rem] border-[10px] border-zinc-800' : 'rounded-2xl border border-primary/40'
+                )}
+                style={
+                  viewMode === 'mobile'
+                    ? {
+                        width: MOBILE_VIEWPORT,
+                        maxWidth: '95vw',
+                        height: MOBILE_IFRAME_HEIGHT,
+                        maxHeight: '85vh',
+                      }
+                    : {
+                        width: Math.min(DESKTOP_IFRAME_WIDTH, 1280),
+                        maxWidth: '95vw',
+                        height: Math.min(DESKTOP_IFRAME_HEIGHT, 800),
+                        maxHeight: '85vh',
+                      }
+                }
+              >
+                <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-primary/20 bg-[#1a1829] shrink-0">
+                  <span className="text-sm font-medium text-white truncate">{expandedLabel}</span>
+                  <span className="text-xs text-slate-500 font-mono truncate flex-1 min-w-0 mx-2">{expandedSrc}</span>
+                  <button
+                    onClick={() => setExpanded(null)}
+                    className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors shrink-0"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0 relative bg-[#0e0c1a]">
+                  <iframe
+                    src={expandedSrc}
+                    title={expandedLabel}
+                    className="absolute inset-0 w-full h-full border-0"
+                    sandbox="allow-scripts allow-same-origin"
+                    referrerPolicy="no-referrer"
+                    style={
+                      viewMode === 'mobile'
+                        ? { width: MOBILE_VIEWPORT, height: '100%' }
+                        : { width: '100%', height: '100%' }
+                    }
+                  />
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Left: Test Configuration */}
       <aside className="w-80 shrink-0 flex flex-col border-r border-white/5">
         <GlassPanel title="Test Configuration" className="flex-1 flex flex-col m-4 mr-0 overflow-hidden rounded-xl">
@@ -198,15 +295,6 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
             <span className="text-slate-400 text-sm">View:</span>
             <div className="flex bg-white/5 p-1 rounded-lg border border-white/10">
               <button
-                onClick={() => setViewMode('split')}
-                className={cn(
-                  'p-1.5 rounded transition-colors',
-                  viewMode === 'split' ? 'bg-white/10 text-white' : 'text-slate-500 hover:bg-white/5'
-                )}
-              >
-                <SquareSplitHorizontal className="w-4 h-4" />
-              </button>
-              <button
                 onClick={() => setViewMode('mobile')}
                 className={cn(
                   'p-1.5 rounded transition-colors',
@@ -228,7 +316,7 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-500 font-mono">
-              {viewMode === 'mobile' ? '375' : viewMode === 'desktop' ? '1920' : '1920'} × 1080
+              {viewMode === 'mobile' ? `${MOBILE_VIEWPORT}×844` : `${DESKTOP_IFRAME_WIDTH}×${DESKTOP_IFRAME_HEIGHT}`} • expand icon to enlarge
             </span>
             <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
               <span className="size-1.5 rounded-full bg-emerald-500" />
@@ -237,18 +325,14 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
           </div>
         </div>
 
-        <div
-          className={cn(
-            'flex-1 flex gap-4 min-h-0',
-            viewMode === 'mobile' && 'flex-col items-center'
-          )}
-        >
+        <div className="flex-1 flex gap-4 min-h-0 min-w-0 overflow-x-auto justify-center">
           {/* Control (Original) */}
           <div
-            className={cn(
-              'flex flex-col min-w-0',
-              viewMode === 'split' ? 'flex-1' : 'flex-1'
-            )}
+            className="flex flex-col min-w-0 flex-1"
+            style={{
+              maxWidth: viewMode === 'desktop' ? DESKTOP_PANE_DISPLAY : undefined,
+              flex: viewMode === 'desktop' ? `0 0 ${DESKTOP_PANE_DISPLAY}px` : undefined,
+            }}
           >
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center gap-2">
@@ -260,8 +344,13 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
               <span className="font-mono text-xs text-slate-500">CR: 2.4%</span>
             </div>
             <div
-              className="flex-1 rounded-xl border border-white/10 overflow-hidden relative bg-[#0e0c1a] min-h-[300px] min-w-0"
-              style={previewWidth ? { width: previewWidth, maxWidth: previewWidth } : undefined}
+              className={cn(
+                'flex-1 overflow-hidden relative bg-[#0e0c1a] min-h-[300px] min-w-0 transition-shadow',
+                viewMode === 'mobile'
+                  ? 'rounded-[1.75rem] border-8 border-zinc-800/90 shadow-xl'
+                  : 'rounded-xl border border-white/10'
+              )}
+              style={{ width: paneWidth, minWidth: 0, maxWidth: '100%' }}
             >
               <div className="absolute inset-x-0 top-0 h-8 bg-[#1a1829] border-b border-white/5 flex items-center px-3 gap-2 z-10">
                 <div className="flex gap-1.5">
@@ -273,29 +362,61 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                   {controlSrc || '—'}
                 </div>
               </div>
-              <div className="absolute inset-0 top-8">
+              <div className="absolute inset-0 top-8 overflow-hidden">
                 {controlSrc ? (
-                  <iframe
-                    src={controlSrc}
-                    title="Control variant"
-                    className="w-full h-full border-0"
-                    sandbox="allow-scripts allow-same-origin"
-                    referrerPolicy="no-referrer"
-                  />
+                  viewMode === 'desktop' ? (
+                    <div
+                      className="absolute top-0 left-0"
+                      style={{
+                        width: DESKTOP_IFRAME_WIDTH,
+                        height: DESKTOP_IFRAME_HEIGHT,
+                        transform: `scale(${desktopScale})`,
+                        transformOrigin: 'top left',
+                      }}
+                    >
+                      <iframe
+                        src={controlSrc}
+                        title="Control variant"
+                        className="border-0"
+                        sandbox="allow-scripts allow-same-origin"
+                        referrerPolicy="no-referrer"
+                        style={{ width: DESKTOP_IFRAME_WIDTH, height: DESKTOP_IFRAME_HEIGHT }}
+                      />
+                    </div>
+                  ) : (
+                    <iframe
+                      src={controlSrc}
+                      title="Control variant"
+                      className="w-full h-full border-0"
+                      sandbox="allow-scripts allow-same-origin"
+                      referrerPolicy="no-referrer"
+                    />
+                  )
                 ) : (
                   <PreviewSkeleton />
                 )}
               </div>
+              {controlSrc && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setExpanded('control'); }}
+                  className="absolute bottom-3 right-3 z-20 p-2 rounded-lg bg-black/60 hover:bg-primary/80 text-white/80 hover:text-white transition-all duration-200 hover:scale-110 shadow-lg"
+                  title="Expand preview"
+                  aria-label="Expand preview"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Divider */}
-          {viewMode === 'split' && (
-            <div className="w-px bg-gradient-to-b from-transparent via-white/10 to-transparent self-stretch shrink-0" />
-          )}
-
           {/* Variant B */}
-          <div className="flex flex-col min-w-0 flex-1">
+          <div
+            className="flex flex-col min-w-0 flex-1"
+            style={{
+              maxWidth: viewMode === 'desktop' ? DESKTOP_PANE_DISPLAY : undefined,
+              flex: viewMode === 'desktop' ? `0 0 ${DESKTOP_PANE_DISPLAY}px` : undefined,
+            }}
+          >
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded bg-primary/20 text-[10px] font-mono text-primary border border-primary/30 flex items-center gap-1">
@@ -307,8 +428,13 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
               <span className="font-mono text-xs text-emerald-400">+12.4% Lift</span>
             </div>
             <div
-              className="flex-1 rounded-xl border border-primary/30 overflow-hidden relative bg-[#0e0c1a] shadow-[0_0_50px_rgba(109,40,217,0.15)] min-h-[300px] min-w-0"
-              style={previewWidth ? { width: previewWidth, maxWidth: previewWidth } : undefined}
+              className={cn(
+                'flex-1 overflow-hidden relative bg-[#0e0c1a] shadow-[0_0_50px_rgba(109,40,217,0.15)] min-h-[300px] min-w-0 transition-shadow',
+                viewMode === 'mobile'
+                  ? 'rounded-[1.75rem] border-8 border-zinc-800/90'
+                  : 'rounded-xl border border-primary/30'
+              )}
+              style={{ width: paneWidth, minWidth: 0, maxWidth: '100%' }}
             >
               <div className="absolute inset-x-0 top-0 h-8 bg-[#1a1829] border-b border-primary/20 flex items-center px-3 gap-2 z-10">
                 <div className="flex gap-1.5">
@@ -320,19 +446,50 @@ export const ExperimentLivePreview = ({ experiment }: ExperimentLivePreviewProps
                   {variantSrc || '—'}
                 </div>
               </div>
-              <div className="absolute inset-0 top-8">
+              <div className="absolute inset-0 top-8 overflow-hidden">
                 {variantSrc ? (
-                  <iframe
-                    src={variantSrc}
-                    title="Variant B"
-                    className="w-full h-full border-0"
-                    sandbox="allow-scripts allow-same-origin"
-                    referrerPolicy="no-referrer"
-                  />
+                  viewMode === 'desktop' ? (
+                    <div
+                      className="absolute top-0 left-0"
+                      style={{
+                        width: DESKTOP_IFRAME_WIDTH,
+                        height: DESKTOP_IFRAME_HEIGHT,
+                        transform: `scale(${desktopScale})`,
+                        transformOrigin: 'top left',
+                      }}
+                    >
+                      <iframe
+                        src={variantSrc}
+                        title="Variant B"
+                        className="border-0"
+                        sandbox="allow-scripts allow-same-origin"
+                        referrerPolicy="no-referrer"
+                        style={{ width: DESKTOP_IFRAME_WIDTH, height: DESKTOP_IFRAME_HEIGHT }}
+                      />
+                    </div>
+                  ) : (
+                    <iframe
+                      src={variantSrc}
+                      title="Variant B"
+                      className="w-full h-full border-0"
+                      sandbox="allow-scripts allow-same-origin"
+                      referrerPolicy="no-referrer"
+                    />
+                  )
                 ) : (
                   <PreviewSkeleton />
                 )}
               </div>
+              {variantSrc && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setExpanded('variant'); }}
+                  className="absolute bottom-3 right-3 z-20 p-2 rounded-lg bg-black/60 hover:bg-primary/80 text-white/80 hover:text-white transition-all duration-200 hover:scale-110 shadow-lg"
+                  title="Expand preview"
+                  aria-label="Expand preview"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>
