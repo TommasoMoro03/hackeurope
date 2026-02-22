@@ -1,23 +1,6 @@
 import { cn } from '@/lib/utils';
 import { FlaskConical } from 'lucide-react';
-
-interface Segment {
-  id: number;
-  name: string;
-  instructions: string;
-  percentage: number;
-}
-
-interface Experiment {
-  id: number;
-  name: string;
-  status: string;
-  description: string;
-  percentage: number;
-  metrics: string;
-  segments: Segment[];
-  created_at: string;
-}
+import type { Experiment } from '@/types/experiment';
 
 interface ExperimentsSidebarProps {
   experiments: Experiment[];

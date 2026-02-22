@@ -32,7 +32,6 @@ export const ExperimentHistoryModal = ({ experiments, onClose }: ExperimentHisto
           <div className="ml-6 pl-4 border-l-2 border-gray-200 space-y-2 pb-2">
             {exp.segments.map((segment: Segment) => {
               const isWinner = segment.id === exp.winning_segment_id;
-              const leadsToNext = isWinner && nextExp;
 
               return (
                 <div key={segment.id} className="flex items-start gap-2">

@@ -11,6 +11,7 @@ import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { UnifiedExperimentWorkspace } from '@/components/UnifiedExperimentWorkspace';
 import { ExperimentHistoryModal } from '@/components/ExperimentHistoryModal';
 import type { ExperimentFormData } from '@/components/ExperimentForm';
+import type { Experiment } from '@/types/experiment';
 
 interface Project {
   id: number;
@@ -25,28 +26,6 @@ interface Project {
   language: string | null;
   default_branch: string | null;
   created_at: string;
-}
-
-interface Segment {
-  id: number;
-  name: string;
-  instructions: string;
-  percentage: number;
-}
-
-interface Experiment {
-  id: number;
-  name: string;
-  description: string;
-  status: string;
-  percentage: number;
-  metrics: string;
-  preview_url?: string;
-  pr_url?: string;
-  segment_preview_hashes?: Record<string, string>;
-  segments: Segment[];
-  created_at: string;
-  winning_segment_id?: number;
 }
 
 export const Dashboard = () => {

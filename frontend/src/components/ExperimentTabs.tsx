@@ -4,25 +4,7 @@ import { ExperimentData } from './ExperimentData';
 import { ExperimentPreview } from './ExperimentPreview';
 import { ExperimentResults } from './ExperimentResults';
 import { ExperimentIteration } from './ExperimentIteration';
-
-interface Segment {
-  id: number;
-  name: string;
-  instructions: string;
-  percentage: number;
-}
-
-interface Experiment {
-  id: number;
-  name: string;
-  description: string;
-  status: string;
-  percentage: number;
-  metrics: string;
-  preview_url?: string;
-  segments: Segment[];
-  created_at: string;
-}
+import type { Experiment } from '@/types/experiment';
 
 interface ExperimentTabsProps {
   experiment: Experiment;
