@@ -1,11 +1,5 @@
 import { useState } from 'react';
-
-interface Segment {
-  id: number;
-  name: string;
-  instructions: string;
-  percentage: number;
-}
+import type { Segment } from '@/types/experiment';
 
 interface ExperimentPreviewProps {
   experimentId: number;
