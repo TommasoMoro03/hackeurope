@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/axios';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { ExperimentForm } from '@/components/ExperimentForm';
 import { ExperimentDetailsCards } from '@/components/ExperimentDetailsCards';
@@ -5,6 +7,8 @@ import { ExperimentDataCard } from '@/components/ExperimentDataCard';
 import { ExperimentProgressSteps } from '@/components/ExperimentProgressSteps';
 import { ExperimentPRFlowCards } from '@/components/ExperimentPRFlowCards';
 import { SplitPreviewPanel } from '@/components/SplitPreviewPanel';
+import { CreationCompletePanel } from '@/components/CreationCompletePanel';
+import { ExperimentFinishing } from '@/components/ExperimentFinishing';
 import type { ExperimentFormData } from '@/components/ExperimentForm';
 
 interface Segment {
@@ -45,9 +49,29 @@ interface UnifiedExperimentWorkspaceProps {
   onPRMerged?: () => void;
   project?: Project | null;
   percentageError?: string | null;
+  isFinishing?: boolean;
+  finishingExperiment?: { id: number; name: string } | null;
+  onFinishingComplete?: () => void;
 }
 
 const PR_STATUSES = ['started', 'implementing', 'pr_created'];
+
+interface CreationStatusSegment {
+  id: number;
+  name: string;
+  instructions: string;
+  percentage: number;
+}
+
+interface CreationStatus {
+  status: string;
+  pr_url?: string | null;
+  preview_url?: string | null;
+  description?: string;
+  metrics?: string;
+  percentage?: number;
+  segments?: CreationStatusSegment[];
+}
 
 export const UnifiedExperimentWorkspace = ({
   mode,
@@ -59,8 +83,52 @@ export const UnifiedExperimentWorkspace = ({
   onFinish,
   onPRMerged,
   percentageError,
+  isFinishing = false,
+  finishingExperiment,
+  onFinishingComplete,
 }: UnifiedExperimentWorkspaceProps) => {
+  const [creationStatus, setCreationStatus] = useState<CreationStatus | null>(null);
+
+  useEffect(() => {
+    if (!creatingExperiment || mode !== 'loading') {
+      setCreationStatus(null);
+      return;
+    }
+    const poll = async () => {
+      try {
+        const res = await api.get(`/api/experiments/${creatingExperiment.id}/status`);
+        setCreationStatus({
+          status: res.data.status,
+          pr_url: res.data.pr_url,
+          preview_url: res.data.preview_url,
+          description: res.data.description,
+          metrics: res.data.metrics,
+          percentage: res.data.percentage,
+          segments: res.data.segments,
+        });
+      } catch {
+        // ignore
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 2000);
+    return () => clearInterval(interval);
+  }, [creatingExperiment?.id, mode]);
+
+  const isCreationComplete = creationStatus && (creationStatus.status === 'pr_created' || creationStatus.status === 'active');
+
   const renderLeftCards = () => {
+    if (finishingExperiment && onFinishingComplete) {
+      return (
+        <ExperimentFinishing
+          experimentId={finishingExperiment.id}
+          experimentName={finishingExperiment.name}
+          onComplete={onFinishingComplete}
+          inline
+        />
+      );
+    }
+
     if (mode === 'planning') {
       return (
         <ExperimentForm
@@ -74,12 +142,6 @@ export const UnifiedExperimentWorkspace = ({
     if (mode === 'loading' && creatingExperiment) {
       return (
         <>
-          <GlassPanel title="Test Configuration" className="rounded-lg">
-            <div className="p-3">
-              <h3 className="text-sm font-semibold text-white truncate">{creatingExperiment.name}</h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Creating experiment...</p>
-            </div>
-          </GlassPanel>
           <GlassPanel title="Progress" className="rounded-lg flex-1 min-h-0 overflow-hidden">
             <ExperimentProgressSteps
               experimentId={creatingExperiment.id}
@@ -87,7 +149,16 @@ export const UnifiedExperimentWorkspace = ({
               onComplete={onCreationComplete}
               onExperimentUpdate={onExperimentUpdate}
               compact
+              creationCompleteInRightPanel={isCreationComplete}
             />
+          </GlassPanel>
+          <GlassPanel title="Test Configuration" className="rounded-lg shrink-0">
+            <div className="p-3">
+              <h3 className="text-sm font-semibold text-white truncate">{creatingExperiment.name}</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {isCreationComplete ? 'PR created — add preview URL in the panel →' : 'Creating experiment...'}
+              </p>
+            </div>
           </GlassPanel>
         </>
       );
@@ -101,6 +172,7 @@ export const UnifiedExperimentWorkspace = ({
             experiment={selectedExperiment}
             onExperimentUpdate={onExperimentUpdate}
             onFinish={onFinish}
+            isFinishing={isFinishing}
           />
           {isPRFlow && onPRMerged && (
             <ExperimentPRFlowCards
@@ -119,11 +191,40 @@ export const UnifiedExperimentWorkspace = ({
 
   const renderRightPreview = () => {
     if (mode === 'loading') {
+      if (isCreationComplete && creatingExperiment) {
+        const handleUpdate = (updates: { preview_url?: string }) => {
+          if (updates.preview_url !== undefined && creationStatus) {
+            setCreationStatus((prev) => prev && { ...prev, preview_url: updates.preview_url ?? null });
+          }
+          onExperimentUpdate?.(updates);
+        };
+        return (
+          <CreationCompletePanel
+            experimentId={creatingExperiment.id}
+            experimentName={creatingExperiment.name}
+            prUrl={creationStatus?.pr_url}
+            initialPreviewUrl={creationStatus?.preview_url}
+            segments={creationStatus?.segments}
+            onComplete={onCreationComplete}
+            onExperimentUpdate={handleUpdate}
+          />
+        );
+      }
+      const cSeg = creationStatus?.segments?.[0];
+      const vSeg = creationStatus?.segments?.[1];
       return (
         <SplitPreviewPanel
           mode="loading"
-          controlLabel="A"
-          variantLabel="B"
+          controlLabel={cSeg?.name ?? 'A'}
+          variantLabel={vSeg?.name ?? 'B'}
+          controlData={cSeg ? `${((cSeg.percentage ?? 0) * 100).toFixed(0)}% traffic` : undefined}
+          variantData={vSeg ? `${((vSeg.percentage ?? 0) * 100).toFixed(0)}% traffic` : undefined}
+          controlInstructions={cSeg?.instructions}
+          variantInstructions={vSeg?.instructions}
+          controlPercentage={cSeg?.percentage}
+          variantPercentage={vSeg?.percentage}
+          metrics={creationStatus?.metrics}
+          description={creationStatus?.description}
         />
       );
     }
@@ -155,6 +256,12 @@ export const UnifiedExperimentWorkspace = ({
           variantUrl={variantUrl}
           controlData={`${((controlSeg?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
           variantData={`${((variantSeg?.percentage ?? 0) * 100).toFixed(0)}% traffic`}
+          controlInstructions={controlSeg?.instructions}
+          variantInstructions={variantSeg?.instructions}
+          controlPercentage={controlSeg?.percentage}
+          variantPercentage={variantSeg?.percentage}
+          metrics={selectedExperiment.metrics}
+          description={selectedExperiment.description}
         />
       );
     }

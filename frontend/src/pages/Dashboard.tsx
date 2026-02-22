@@ -9,7 +9,6 @@ import { AppBackground } from '@/components/ui/app-background';
 import { DashboardNav } from '@/components/DashboardNav';
 import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { UnifiedExperimentWorkspace } from '@/components/UnifiedExperimentWorkspace';
-import { ExperimentFinishing } from '@/components/ExperimentFinishing';
 import { ExperimentHistoryModal } from '@/components/ExperimentHistoryModal';
 import type { ExperimentFormData } from '@/components/ExperimentForm';
 
@@ -61,6 +60,7 @@ export const Dashboard = () => {
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [creatingExperiment, setCreatingExperiment] = useState<{ id: number; name: string } | null>(null);
   const [finishingExperiment, setFinishingExperiment] = useState<{ id: number; name: string } | null>(null);
+  const [isFinishing, setIsFinishing] = useState(false);
 
   const { data: project, isLoading: loading } = useQuery({
     queryKey: ['github-project'],
@@ -144,16 +144,20 @@ export const Dashboard = () => {
   const handleFinishExperiment = async () => {
     if (!selectedExperiment) return;
 
+    setIsFinishing(true);
+    setError(null);
     try {
       await api.post(`/api/experiments/${selectedExperiment.id}/finish`);
       setFinishingExperiment({
         id: selectedExperiment.id,
         name: selectedExperiment.name
       });
-      setError(null);
     } catch (err: any) {
-      setError('Failed to finish experiment');
+      const msg = err?.response?.data?.detail ?? 'Failed to finish experiment';
+      setError(typeof msg === 'string' ? msg : 'Failed to finish experiment');
       console.error('Error finishing experiment:', err);
+    } finally {
+      setIsFinishing(false);
     }
   };
 
@@ -256,14 +260,10 @@ export const Dashboard = () => {
               onFinish={handleFinishExperiment}
               onPRMerged={handlePRMerged}
               project={project}
+              isFinishing={isFinishing}
+              finishingExperiment={finishingExperiment}
+              onFinishingComplete={handleFinishingComplete}
             />
-            {finishingExperiment && (
-              <ExperimentFinishing
-                experimentId={finishingExperiment.id}
-                experimentName={finishingExperiment.name}
-                onComplete={handleFinishingComplete}
-              />
-            )}
           </>
         </div>
       </div>

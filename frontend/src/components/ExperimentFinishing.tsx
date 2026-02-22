@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/axios';
+import { Check, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ExperimentFinishingProps {
   experimentId: number;
   experimentName: string;
   onComplete: () => void;
+  /** Inline mode: render as a panel in the sidebar instead of a modal overlay */
+  inline?: boolean;
 }
 
 interface FinishingStep {
@@ -13,9 +17,10 @@ interface FinishingStep {
   status: 'pending' | 'loading' | 'completed';
 }
 
-export const ExperimentFinishing = ({ experimentId, experimentName, onComplete }: ExperimentFinishingProps) => {
+export const ExperimentFinishing = ({ experimentId, experimentName, onComplete, inline = false }: ExperimentFinishingProps) => {
   const [status, setStatus] = useState<string>('finishing');
   const [error, setError] = useState<string | null>(null);
+  const [pollCount, setPollCount] = useState(0);
   const [steps, setSteps] = useState<FinishingStep[]>([
     { id: 'collect', label: 'Collecting experiment data', status: 'pending' },
     { id: 'analyze', label: 'Analyzing results', status: 'pending' },
@@ -68,8 +73,9 @@ export const ExperimentFinishing = ({ experimentId, experimentName, onComplete }
     const pollStatus = async () => {
       try {
         const response = await api.get(`/api/experiments/${experimentId}/status`);
-        const newStatus = response.data.status;
-        setStatus(newStatus);
+        const newStatus = response.data?.status ?? response.data?.Status;
+        setPollCount((c) => c + 1);
+        if (newStatus) setStatus(newStatus);
 
         // If status is finished or failed, complete all steps and stop polling
         if (newStatus === 'finished' || newStatus === 'failed') {
@@ -81,7 +87,7 @@ export const ExperimentFinishing = ({ experimentId, experimentName, onComplete }
           setTimeout(() => onComplete(), 1000);
         }
       } catch (err: any) {
-        setError('Failed to fetch experiment status');
+        setError(err?.response?.data?.detail ?? 'Failed to fetch experiment status');
         console.error('Error polling status:', err);
       }
     };
@@ -97,92 +103,108 @@ export const ExperimentFinishing = ({ experimentId, experimentName, onComplete }
 
   const renderStepIcon = (stepStatus: 'pending' | 'loading' | 'completed') => {
     if (stepStatus === 'completed') {
-      return (
-        <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-      );
+      return <Check className="w-4 h-4 text-emerald-400 shrink-0" />;
     }
-
     if (stepStatus === 'loading') {
-      return (
-        <svg className="animate-spin w-5 h-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-      );
+      return <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />;
     }
-
-    return (
-      <div className="w-5 h-5 border-2 border-gray-300 rounded-full"></div>
-    );
+    return <div className="w-4 h-4 rounded-full border-2 border-white/20 shrink-0" />;
   };
 
+  const content = (
+    <div className={cn(inline ? 'p-4 space-y-4' : 'p-8')}>
+      <div className="text-center mb-4">
+        <h3 className={cn(
+          'font-semibold mb-1',
+          inline ? 'text-sm text-white' : 'text-xl text-gray-900'
+        )}>
+          {status === 'finished' ? 'Experiment Finished!' : status === 'failed' ? 'Error' : 'Finishing Experiment'}
+        </h3>
+        <p className={cn(
+          'text-sm',
+          inline ? 'text-slate-400' : 'text-gray-600'
+        )}>
+          {status === 'finished'
+            ? `"${experimentName}" has been successfully finished`
+            : status === 'failed'
+            ? 'There was an error finishing your experiment'
+            : 'Please wait while we finalize your experiment'}
+        </p>
+      </div>
+
+      {/* Progress Steps */}
+      {status === 'finishing' && (
+        <div className="space-y-2 mb-4">
+          {steps.map((step) => (
+            <div key={step.id} className="flex items-center gap-3">
+              <div className="flex-shrink-0">{renderStepIcon(step.status)}</div>
+              <p className={cn(
+                'text-xs font-medium flex-1',
+                step.status === 'completed' ? 'text-emerald-400' :
+                step.status === 'loading' ? 'text-primary' :
+                'text-slate-500'
+              )}>
+                {step.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Success Icon */}
+      {status === 'finished' && (
+        <div className="flex justify-center mb-4">
+          <div className="size-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+            <Check className="w-6 h-6 text-emerald-400" />
+          </div>
+        </div>
+      )}
+
+      {/* Error Icon */}
+      {status === 'failed' && (
+        <div className="flex justify-center mb-4">
+          <div className="size-12 rounded-full bg-red-500/20 flex items-center justify-center">
+            <span className="text-red-400 text-2xl">×</span>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className={cn(
+          'rounded-lg px-3 py-2 text-xs',
+          inline ? 'bg-red-500/10 border border-red-500/30 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
+        )}>
+          {error}
+        </div>
+      )}
+
+      <p className={cn(
+        'text-center text-xs',
+        inline ? 'text-slate-500' : 'text-gray-500'
+      )}>
+        {status === 'finishing' && pollCount > 6
+          ? 'Taking longer than usual — analysis still running…'
+          : 'This may take a few moments'}
+      </p>
+    </div>
+  );
+
+  if (inline) {
+    return (
+      <div className="glass-panel-vibe rounded-lg border border-white/10 overflow-hidden">
+        <div className="px-3 py-2 border-b border-white/5">
+          <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">Finishing</h3>
+          <p className="text-sm font-semibold text-white truncate">{experimentName}</p>
+        </div>
+        {content}
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
-        <div className="text-center mb-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            {status === 'finished' ? 'Experiment Finished!' : status === 'failed' ? 'Error' : 'Finishing Experiment'}
-          </h3>
-          <p className="text-gray-600">
-            {status === 'finished'
-              ? `"${experimentName}" has been successfully finished`
-              : status === 'failed'
-              ? 'There was an error finishing your experiment'
-              : 'Please wait while we finalize your experiment'}
-          </p>
-        </div>
-
-        {/* Progress Steps */}
-        {status === 'finishing' && (
-          <div className="space-y-3 mb-6">
-            {steps.map((step) => (
-              <div key={step.id} className="flex items-center gap-3">
-                <div className="flex-shrink-0">
-                  {renderStepIcon(step.status)}
-                </div>
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${
-                    step.status === 'completed' ? 'text-green-700' :
-                    step.status === 'loading' ? 'text-blue-700' :
-                    'text-gray-500'
-                  }`}>
-                    {step.label}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Success Icon */}
-        {status === 'finished' && (
-          <div className="flex justify-center mb-6">
-            <svg className="w-16 h-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-        )}
-
-        {/* Error Icon */}
-        {status === 'failed' && (
-          <div className="flex justify-center mb-6">
-            <svg className="w-16 h-16 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="text-center text-sm text-gray-500 mt-4">
-          This may take a few moments
-        </div>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        {content}
       </div>
     </div>
   );

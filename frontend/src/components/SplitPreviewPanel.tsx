@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Smartphone, Monitor, Sparkles, Loader2, X, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SegmentSummaryCards } from '@/components/SegmentSummaryCards';
 
 type ViewMode = 'mobile' | 'desktop';
 type ExpandedPane = 'control' | 'variant' | null;
@@ -21,7 +22,19 @@ interface SplitPreviewPanelProps {
   variantUrl?: string;
   controlData?: string;
   variantData?: string;
+  /** Segment instructions - shown alongside A/B for context */
+  controlInstructions?: string;
+  variantInstructions?: string;
+  /** Traffic split 0-1 for SegmentSummaryCards */
+  controlPercentage?: number;
+  variantPercentage?: number;
+  /** Experiment-level context */
+  metrics?: string;
+  description?: string;
 }
+
+const truncate = (s: string, len: number) =>
+  s.length <= len ? s : s.slice(0, len).trim() + '…';
 
 export const SplitPreviewPanel = ({
   mode,
@@ -31,6 +44,12 @@ export const SplitPreviewPanel = ({
   variantUrl,
   controlData,
   variantData,
+  controlInstructions,
+  variantInstructions,
+  controlPercentage,
+  variantPercentage,
+  metrics,
+  description,
 }: SplitPreviewPanelProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('mobile');
   const [expanded, setExpanded] = useState<ExpandedPane>(null);
@@ -53,6 +72,8 @@ export const SplitPreviewPanel = ({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [expanded]);
+
+  const hasSegmentData = !!(controlInstructions || variantInstructions || metrics || description);
 
   const PreviewPane = ({
     type,
@@ -101,7 +122,7 @@ export const SplitPreviewPanel = ({
         {data && (
           <span
             className={cn(
-              'font-mono text-xs',
+              'font-mono text-xs shrink-0',
               type === 'control' ? 'text-slate-500' : 'text-emerald-400'
             )}
           >
@@ -358,6 +379,34 @@ export const SplitPreviewPanel = ({
               Live Preview
             </span>
           </div>
+        </div>
+      )}
+
+      {hasSegmentData && (
+        <div className="mb-3">
+          <SegmentSummaryCards
+            control={{
+              name: controlLabel,
+              instructions: controlInstructions,
+              percentage: controlPercentage,
+            }}
+            variant={{
+              name: variantLabel,
+              instructions: variantInstructions,
+              percentage: variantPercentage,
+            }}
+            compact
+          />
+          {(metrics?.trim() || description?.trim()) && (
+            <div className="mt-2 px-2 py-1.5 rounded bg-white/5 border border-white/5 text-[11px] text-slate-500">
+              {description?.trim() && (
+                <p className="line-clamp-1" title={description}>{truncate(description.trim(), 80)}</p>
+              )}
+              {metrics?.trim() && (
+                <p className="font-mono mt-0.5">Metrics: {truncate(metrics.trim(), 50)}</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

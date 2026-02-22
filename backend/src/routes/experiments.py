@@ -231,12 +231,33 @@ def get_experiment_status(
     result = {
         "id": experiment.id,
         "name": experiment.name,
-        "status": experiment.status
+        "status": experiment.status,
+        "description": experiment.description or "",
+        "metrics": experiment.metrics or "",
+        "percentage": experiment.percentage,
+        "segments": [
+            {
+                "id": s.id,
+                "name": s.name,
+                "instructions": s.instructions or "",
+                "percentage": s.percentage,
+            }
+            for s in sorted(experiment.segments, key=lambda x: x.id)
+        ],
     }
     if experiment.pr_url:
         result["pr_url"] = experiment.pr_url
     if experiment.preview_url is not None:
         result["preview_url"] = experiment.preview_url
+    if experiment.segment_preview_hashes:
+        try:
+            result["segment_preview_hashes"] = (
+                json.loads(experiment.segment_preview_hashes)
+                if isinstance(experiment.segment_preview_hashes, str)
+                else experiment.segment_preview_hashes
+            )
+        except (json.JSONDecodeError, TypeError):
+            pass
     return result
 
 
@@ -480,17 +501,21 @@ def finish_experiment(
             if exp:
                 exp.status = "finished"
                 db_bg.commit()
+                db_bg.refresh(exp)
 
         except Exception as e:
             # On error, rollback failed transaction before any new queries
             db_bg.rollback()
+            import traceback
             print(f"Error analyzing experiment {experiment_id}: {str(e)}")
+            traceback.print_exc()
             try:
                 exp = db_bg.query(Experiment).filter(Experiment.id == experiment_id).first()
                 if exp:
                     exp.status = "failed"
                     db_bg.commit()
-            except Exception:
+            except Exception as inner:
+                print(f"Failed to set failed status: {inner}")
                 db_bg.rollback()
         finally:
             db_bg.close()

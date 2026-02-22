@@ -8,6 +8,8 @@ interface ExperimentProgressStepsProps {
   onComplete: (experimentId?: number) => void;
   compact?: boolean;
   onExperimentUpdate?: (updates: { preview_url?: string }) => void;
+  /** When true, PR Created UI is rendered in the right panel; show compact steps here */
+  creationCompleteInRightPanel?: boolean;
 }
 
 interface ProgressStep {
@@ -22,6 +24,7 @@ export const ExperimentProgressSteps = ({
   onComplete,
   compact = false,
   onExperimentUpdate,
+  creationCompleteInRightPanel = false,
 }: ExperimentProgressStepsProps) => {
   const [status, setStatus] = useState<string>('started');
   const [prUrl, setPrUrl] = useState<string | null>(null);
@@ -148,7 +151,7 @@ export const ExperimentProgressSteps = ({
     }
   };
 
-  if (status === 'active' || status === 'pr_created') {
+  if ((status === 'active' || status === 'pr_created') && !creationCompleteInRightPanel) {
     return (
       <div className="p-4 space-y-4">
         <div className="text-center">
@@ -199,6 +202,33 @@ export const ExperimentProgressSteps = ({
         >
           Continue
         </button>
+      </div>
+    );
+  }
+
+  if ((status === 'active' || status === 'pr_created') && creationCompleteInRightPanel) {
+    return (
+      <div className={compact ? 'p-3 space-y-3' : 'p-4 space-y-4'}>
+        <div className="mb-3">
+          <h3 className="text-xs font-mono uppercase tracking-wider text-emerald-400">All steps complete</h3>
+          <p className="text-sm text-slate-400 mt-0.5 truncate">{experimentName}</p>
+        </div>
+        <div className="space-y-2">
+          {steps.map((step, i) => (
+            <div key={step.id} className="flex items-start gap-3 py-1">
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-mono text-emerald-400">
+                {i + 1}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-slate-300">{step.label}</p>
+              </div>
+              <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-slate-500 pt-2 border-t border-white/5">
+          Add preview URL & continue in the panel →
+        </p>
       </div>
     );
   }
