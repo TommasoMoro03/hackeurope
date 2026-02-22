@@ -40,6 +40,7 @@ interface UnifiedExperimentWorkspaceProps {
   onIterationComplete?: () => void;
   onAcceptIteration?: (formData: ExperimentFormData) => void;
   onRejectIteration?: () => void;
+  experimentFormInitialData?: Partial<ExperimentFormData>;
 }
 
 const PR_STATUSES = ['started', 'implementing', 'pr_created'];
@@ -82,6 +83,7 @@ export const UnifiedExperimentWorkspace = ({
   onIterationComplete,
   onAcceptIteration,
   onRejectIteration,
+  experimentFormInitialData,
 }: UnifiedExperimentWorkspaceProps) => {
   const [creationStatus, setCreationStatus] = useState<CreationStatus | null>(null);
 
@@ -122,6 +124,7 @@ export const UnifiedExperimentWorkspace = ({
           experimentId={iteratingExperiment.id}
           experimentName={iteratingExperiment.name}
           onComplete={onIterationComplete}
+          hasResults={!!iterationSuggestion}
           inline
         />
       );
@@ -144,6 +147,7 @@ export const UnifiedExperimentWorkspace = ({
           onSubmit={onCreateExperiment}
           layout="default"
           percentageError={percentageError}
+          initialData={experimentFormInitialData}
         />
       );
     }

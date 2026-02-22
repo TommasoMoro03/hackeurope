@@ -97,6 +97,7 @@ export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) =>
                   </div>
                   <div className="text-[9px] text-slate-500 mt-0.5">
                     {new Date(event.event_json.timestamp).toLocaleString()}
+                    {event.event_json.user_id && ` • ${event.event_json.user_id}`}
                   </div>
                 </div>
               ))}
