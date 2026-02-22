@@ -72,7 +72,7 @@ export const InsightsGraph = ({ insights, summary }: InsightsGraphProps) => {
 
       {/* Category Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-        {groupedInsights.map(([category, categoryInsights], categoryIndex) => (
+        {groupedInsights.map(([category, categoryInsights]) => (
           <div key={category} className="space-y-3">
             {/* Category Header */}
             <div className={`border-2 ${getCategoryColor(category)} rounded-lg p-3 shadow-md`}>

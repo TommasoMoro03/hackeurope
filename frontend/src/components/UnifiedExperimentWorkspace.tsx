@@ -51,7 +51,6 @@ export const UnifiedExperimentWorkspace = ({
   selectedExperiment,
   onExperimentUpdate,
   onFinish,
-  project,
   percentageError,
 }: UnifiedExperimentWorkspaceProps) => {
   const renderLeftCards = () => {

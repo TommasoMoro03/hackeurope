@@ -22,13 +22,6 @@ interface IterationData {
   iteration_strategy: string;
 }
 
-interface IterationResponse {
-  success: boolean;
-  suggestion: IterationData;
-  based_on_experiment_id: number;
-  based_on_experiment_name: string;
-}
-
 interface ExperimentIterationProps {
   experimentId: number;
   experimentName: string;
