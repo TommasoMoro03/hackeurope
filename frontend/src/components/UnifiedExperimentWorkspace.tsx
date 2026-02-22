@@ -75,6 +75,7 @@ export const UnifiedExperimentWorkspace = ({
   onFinish,
   onIterate,
   onPRMerged,
+  project,
   percentageError,
   isFinishing = false,
   finishingExperiment,
@@ -87,6 +88,12 @@ export const UnifiedExperimentWorkspace = ({
   experimentFormInitialData,
 }: UnifiedExperimentWorkspaceProps) => {
   const [creationStatus, setCreationStatus] = useState<CreationStatus | null>(null);
+  const [showSimulatedResults, setShowSimulatedResults] = useState(false);
+
+  // Reset simulated results panel when experiment changes
+  useEffect(() => {
+    setShowSimulatedResults(false);
+  }, [selectedExperiment?.id]);
 
   useEffect(() => {
     if (!creatingExperiment || mode !== 'loading') {
@@ -208,7 +215,11 @@ export const UnifiedExperimentWorkspace = ({
             onIterate={onIterate}
             isFinishing={isFinishing}
           />
-          <ExperimentDataCard experiment={selectedExperiment} projectId={project?.id ?? 0} />
+          <ExperimentDataCard
+            experiment={selectedExperiment}
+            projectId={project?.id ?? 0}
+            onAnalysisReady={() => setShowSimulatedResults(true)}
+          />
           {isPRFlow && onPRMerged && (
             <GlassPanel title="PR Ready" className="rounded-lg shrink-0">
               <CreationCompletePanel
@@ -273,6 +284,28 @@ export const UnifiedExperimentWorkspace = ({
           experimentId={selectedExperiment.id}
           isLoading={false}
         />
+      );
+    }
+
+    // Show results after simulation (non-destructive — experiment status unchanged)
+    if (showSimulatedResults && selectedExperiment) {
+      return (
+        <div className="space-y-3 flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] font-mono text-yellow-400 uppercase tracking-wider">Simulated Results</span>
+            <button
+              type="button"
+              onClick={() => setShowSimulatedResults(false)}
+              className="text-[10px] text-slate-500 hover:text-slate-300"
+            >
+              ✕ Dismiss
+            </button>
+          </div>
+          <ExperimentResultsPanel
+            experimentId={selectedExperiment.id}
+            isLoading={false}
+          />
+        </div>
       );
     }
 
@@ -350,7 +383,7 @@ export const UnifiedExperimentWorkspace = ({
     return null;
   };
 
-  const showSplitPreview = mode === 'loading' || (mode === 'experiment' && selectedExperiment) || finishingExperiment || selectedExperiment?.status === 'finished' || iteratingExperiment;
+  const showSplitPreview = mode === 'loading' || (mode === 'experiment' && selectedExperiment) || finishingExperiment || selectedExperiment?.status === 'finished' || iteratingExperiment || showSimulatedResults;
 
   if (mode === 'planning') {
     return (

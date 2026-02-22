@@ -1,92 +1,162 @@
 PR_CREATION_PROMPT = """
-You are implementing an A/B/n test experiment. Your changes must be MINIMAL and ADDITIVE ONLY.
+Implement an A/B/n experiment in this repository. You have tools — use them.
 
-EXPERIMENT DEFINITION:
+═══════════════════════════════════════════════════════════
+EXPERIMENT DEFINITION
+═══════════════════════════════════════════════════════════
 {{EXPERIMENT_JSON}}
 
-TRACKING EVENTS:
+═══════════════════════════════════════════════════════════
+TRACKING EVENTS TO IMPLEMENT
+═══════════════════════════════════════════════════════════
 {{EVENTS_JSON}}
 
-PREVIEW HASHES (for #test1, #test2 URL override):
-{{PREVIEW_HASHES_JSON}}
-
-CRITICAL - Preview mode: Each segment has a preview_hash (e.g. "test1", "test2"). When the user visits with a hash fragment (e.g. https://myapp.com#test1 or https://myapp.com#test2), the app MUST detect this and force-render that segment's variant. Implement client-side logic:
-1. On load, parse window.location.hash (e.g. hash.slice(1) to get "test1" or "test2")
-2. If the hash matches a segment's preview_hash, render that segment's variant and use that segment_id for all tracking
-3. Otherwise, use normal random assignment based on segment percentages
-Each segment in the experiment JSON includes "preview_hash". Use these exact values. Left/preview1 = #test1, right/preview2 = #test2.
-
-WEBHOOK: {{WEBHOOK_URL}}
-Payload structure:
+Each event in the list above MUST be fired via fetch() to {{WEBHOOK_URL}} when the corresponding
+user action occurs. Use this EXACT payload shape:
 {
-  "event_id": "event_name",
-  "segment_id": number,
-  "segment_name": "string",
-  "experiment_id": number,
-  "project_id": number,
-  "timestamp": "ISO string",
-  "user_id": "optional",
+  "event_id": "<event_id from above>",
+  "segment_id": <actual segment id from experiment JSON>,
+  "segment_name": "<actual segment name>",
+  "experiment_id": <actual experiment id>,
+  "project_id": <actual project id>,
+  "timestamp": new Date().toISOString(),
+  "user_id": "<optional, e.g. from localStorage or null>",
   "metadata": {}
 }
 
-STRICT RULES:
-1. ADDITIVE ONLY: Create new files. Do NOT remove or replace existing providers, routes, or components.
-2. PRESERVE CONTEXT: If editing App.tsx or root layout, ensure ALL existing providers (Auth, Theme, etc.) and routes remain intact.
-3. MINIMAL INTEGRATION: Add experiment access via ONE new route or ONE small change to an existing page (e.g., a single link/button).
-4. NO STRUCTURAL CHANGES: Do not rewrite root App, remove auth, or modify protected routes.
-5. SIMPLE TRACKING: Use direct fetch() calls to {{WEBHOOK_URL}} - no elaborate infrastructure.
+═══════════════════════════════════════════════════════════
+PREVIEW HASH CONTRACT
+═══════════════════════════════════════════════════════════
+{{PREVIEW_HASHES_JSON}}
 
-VERIFICATION CHECKLIST:
-[ ] No existing providers removed from App or root layout
-[ ] No existing routes removed
-[ ] Pages using useAuth() or similar hooks still have required providers above them
-[ ] New experiment components are purely additive
+Segments and their preview hashes:
+{{PREVIEW_HASHES_MAPPING}}
 
-IMPLEMENTATION:
-1. Create new route/component files for each segment variant
-2. Add ONE minimal entry point (link, button, or route) to access experiment
-3. Add fetch() calls for tracking events using actual IDs from {{EXPERIMENT_JSON}}
+The app MUST support forced-segment preview via URL hash:
+  - On component mount, read: const hash = window.location.hash.slice(1)  // e.g. "test1"
+  - If hash matches any segment's preview_hash → force that segment (no random)
+  - Otherwise → assign randomly weighted by segment percentages
+  - Use the hash values from the experiment JSON exactly (e.g. "test1", "test2")
 
-EXAMPLE (Next.js) - include preview hash check:
-// On app/experiment layout or provider: detect #test1 or #test2 and force segment
-const hashVal = typeof window !== 'undefined' ? window.location.hash.slice(1) : null;
-const forcedSegment = segments.find(s => s.preview_hash === hashVal);
-// If forcedSegment, render that variant; else use random assignment.
+═══════════════════════════════════════════════════════════
+IMPLEMENTATION INSTRUCTIONS
+═══════════════════════════════════════════════════════════
 
-// NEW FILE: app/experiment-name/control/page.tsx
-export default function ControlVariant() {
-  const trackEvent = (eventId: string) => {
-    fetch('{{WEBHOOK_URL}}', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+STEP 1 — UNDERSTAND THE REPO
+  Read the framework-detected key files already in context. Identify:
+  - The main page/component that real users land on (e.g. app/page.tsx, src/App.tsx)
+  - Where global state / providers live (e.g. app/layout.tsx, src/main.tsx)
+  - Existing routing patterns
+
+STEP 2 — CREATE EXPERIMENT FILES
+  Create ONE new file per segment variant, e.g.:
+    src/experiments/{{EXPERIMENT_NAME}}/ControlVariant.tsx   (segment 1)
+    src/experiments/{{EXPERIMENT_NAME}}/VariantB.tsx         (segment 2)
+  Each variant file must:
+  a) Render the variant UI described in the segment's "instructions"
+  b) Import and call trackEvent() for EVERY event in the TRACKING EVENTS list at the right moment
+  c) The trackEvent function must POST to {{WEBHOOK_URL}}
+
+  Example variant file structure:
+  ---
+  const EXPERIMENT_ID = <id>;
+  const PROJECT_ID = <project_id>;
+  const SEGMENT_ID = <this_segment_id>;
+  const SEGMENT_NAME = "<this_segment_name>";
+  const WEBHOOK_URL = "{{WEBHOOK_URL}}";
+
+  const trackEvent = (eventId: string, metadata?: Record<string, unknown>) => {
+    fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         event_id: eventId,
-        segment_id: ACTUAL_SEGMENT_ID,
-        segment_name: 'control',
-        experiment_id: ACTUAL_EXPERIMENT_ID,
-        project_id: ACTUAL_PROJECT_ID,
-        timestamp: new Date().toISOString()
-      })
-    });
+        segment_id: SEGMENT_ID,
+        segment_name: SEGMENT_NAME,
+        experiment_id: EXPERIMENT_ID,
+        project_id: PROJECT_ID,
+        timestamp: new Date().toISOString(),
+        user_id: typeof window !== "undefined" ? (localStorage.getItem("userId") ?? null) : null,
+        metadata: metadata ?? {},
+      }),
+    }).catch(() => {});  // fire-and-forget
   };
+  ---
 
-  return <button onClick={() => trackEvent('button_click')}>Click Me</button>;
-}
+STEP 3 — CREATE EXPERIMENT CONTROLLER
+  Create src/experiments/{{EXPERIMENT_NAME}}/ExperimentController.tsx (or .jsx/.js if no TS):
+  - Reads window.location.hash to detect forced preview segment
+  - Otherwise randomly assigns segment weighted by percentages on first load
+  - Persists assignment to localStorage so the same user always sees the same variant
+  - Renders the correct variant component
+  - Fires the first "view" or "impression" event on mount
 
-// SMALL UPDATE to ONE existing file (e.g., app/page.tsx):
-// Add: <Link href="/experiment-name/control">Try Experiment</Link>
+  Segment assignment logic:
+  ---
+  const SEGMENTS = [
+    { id: <id1>, name: "<name1>", percentage: <pct1>, hash: "<hash1>", Component: ControlVariant },
+    { id: <id2>, name: "<name2>", percentage: <pct2>, hash: "<hash2>", Component: VariantB },
+  ];
+  const STORAGE_KEY = "exp_{{EXPERIMENT_NAME}}_segment";
 
-OUTPUT (JSON only, no markdown):
-{
-  "files": [
-    {
-      "path": "path/to/file",
-      "content": "complete file content",
-      "action": "create or update"
+  function assignSegment() {
+    const hash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
+    const forced = SEGMENTS.find(s => s.hash === hash);
+    if (forced) return forced;
+
+    const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    if (stored) {
+      const found = SEGMENTS.find(s => s.id === Number(stored));
+      if (found) return found;
     }
-  ],
-  "commitMessage": "Add {{EXPERIMENT_NAME}} experiment",
-  "prTitle": "feat: {{EXPERIMENT_NAME}} A/B test",
-  "prDescription": "Minimal additive implementation of {{EXPERIMENT_NAME}} with {{NUM_SEGMENTS}} variants. No existing functionality removed."
-}
+
+    let rand = Math.random();
+    for (const seg of SEGMENTS) {
+      rand -= seg.percentage;
+      if (rand <= 0) {
+        localStorage.setItem(STORAGE_KEY, String(seg.id));
+        return seg;
+      }
+    }
+    localStorage.setItem(STORAGE_KEY, String(SEGMENTS[0].id));
+    return SEGMENTS[0];
+  }
+  ---
+
+STEP 4 — INTEGRATE INTO THE EXISTING APP (CRITICAL)
+  Modify the EXISTING main landing page / entry point to render ExperimentController.
+  Do NOT create an isolated new route that nobody visits.
+  Do NOT remove existing content — wrap or extend it.
+
+  For Next.js App Router: edit app/page.tsx (or the most-visited existing page)
+  For React SPA: edit src/App.tsx or the relevant existing page component
+  For Next.js Pages: edit pages/index.tsx or relevant existing page
+
+  Add the experiment like this (additive, not replacing):
+  ---
+  // In the existing page, add near where the experiment targets (e.g. hero section, CTA area):
+  import { ExperimentController } from "@/experiments/{{EXPERIMENT_NAME}}/ExperimentController";
+
+  // Then in JSX, place it where the experiment content should appear:
+  <ExperimentController />
+  ---
+
+  If the page uses SSR/"use client" boundaries, add "use client" to your experiment files.
+
+STEP 5 — WRITE AND COMMIT
+  After deciding on all files:
+  1. Call write_file for EACH new/modified file with COMPLETE content
+  2. Call flush_writes to commit everything at once
+  3. Call compare_changes to verify at least {{MIN_CHANGED_FILES}} files changed
+
+STRICT RULES:
+  ✗ Never remove existing providers, routes, or imports
+  ✗ Never add "use server" to client-side files
+  ✗ Never use placeholder IDs — use the REAL IDs from the experiment JSON
+  ✗ The final JSON must have "status": "done" (not "files" array)
+  ✓ All fetch() to webhook must be fire-and-forget (no await, catch errors silently)
+  ✓ Segment assignment must persist to localStorage
+
+FINAL OUTPUT FORMAT (exactly this, after flush_writes + compare_changes):
+{"status":"done","commitMessage":"feat: implement {{EXPERIMENT_NAME}} A/B experiment with event tracking","prTitle":"feat: {{EXPERIMENT_NAME}} A/B experiment","prDescription":"Implements {{EXPERIMENT_NAME}} experiment with {{NUM_SEGMENTS}} variants. Events tracked: all events from the spec. Preview via #test1 / #test2 hash.","verificationNotes":"<brief notes on what you changed and where>"}
 """

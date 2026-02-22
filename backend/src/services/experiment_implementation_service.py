@@ -7,7 +7,7 @@ from src.models.experiment import Experiment
 from src.models.project import Project
 from src.services.llm_service import get_llm_service
 from src.services.events_extraction_service import EventsExtractionService
-from src.services.github_agent_service import GitHubAgentService
+from src.services.github_agent_service_with_tools import GitHubAgentService
 
 
 async def implement_experiment_async(experiment_id: int, db: Session):
@@ -125,10 +125,9 @@ def implement_experiment_sync(experiment_id: int, db: Session):
             experiment_json=experiment_json
         )
 
-        # Store computation logic in database
-        if "computation_logic" in events_data:
-            experiment.computation_logic = json.dumps(events_data["computation_logic"])
-            db.commit()
+        # Store full events_data (events list + computation logic) so simulation & analysis both work
+        experiment.computation_logic = json.dumps(events_data)
+        db.commit()
 
         print(f"Events extracted: {json.dumps(events_data, indent=2)}")
 

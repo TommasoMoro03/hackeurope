@@ -1,20 +1,43 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.config import settings
-from src.database import engine, Base
+from src.database import engine, Base, get_db
 from src.routes import auth, github, experiments
 
 # Import models to ensure they're registered
 from src.models import user, project, experiment, segment
+from src.models.experiment import Experiment as ExperimentModel
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # On startup: any experiment stuck in 'implementing' was killed by a previous
+    # process restart — mark it failed so the frontend stops polling.
+    db = next(get_db())
+    try:
+        stuck = db.query(ExperimentModel).filter(ExperimentModel.status == "implementing").all()
+        if stuck:
+            for exp in stuck:
+                exp.status = "failed"
+                print(f"[startup] Experiment {exp.id} '{exp.name}' was stuck — marked failed")
+            db.commit()
+    except Exception as e:
+        print(f"[startup] Could not recover stuck experiments: {e}")
+    finally:
+        db.close()
+    yield  # app runs here
+
 
 # Initialize FastAPI app
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
+    lifespan=lifespan,
 )
 
 # Configure CORS (allow_credentials=False when origins=["*"] per CORS spec)

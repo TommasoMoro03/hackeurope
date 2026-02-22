@@ -22,18 +22,16 @@ interface EventData {
 interface ExperimentDataCardProps {
   experiment: Experiment;
   projectId: number;
+  onAnalysisReady?: () => void;
 }
 
-const EVENT_TYPES = ['btn_signup_click', 'page_view', 'cta_hover', 'scroll_80', 'form_submit'];
-const WEBHOOK_URL = 'http://localhost:8001/webhook/event';
-
-export const ExperimentDataCard = ({ experiment, projectId }: ExperimentDataCardProps) => {
+export const ExperimentDataCard = ({ experiment, onAnalysisReady }: ExperimentDataCardProps) => {
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [simulating, setSimulating] = useState(false);
-  const [simProgress, setSimProgress] = useState<{ sent: number; total: number } | null>(null);
+  const [simResult, setSimResult] = useState<string | null>(null);
 
   const fetchEvents = async () => {
     try {
@@ -54,60 +52,26 @@ export const ExperimentDataCard = ({ experiment, projectId }: ExperimentDataCard
   }, [experiment.id]);
 
   const handleSimulate = async () => {
-    const segments = experiment.segments;
-    if (!segments || segments.length === 0) return;
-
-    const count = 60;
+    if (!experiment.segments?.length) return;
     setSimulating(true);
-    setSimProgress({ sent: 0, total: count });
-
-    const baseTime = Date.now();
-
-    for (let i = 0; i < count; i++) {
-      // Distribute across segments weighted by percentage
-      let seg = segments[0];
-      const rand = Math.random();
-      let cumulative = 0;
-      for (const s of segments) {
-        cumulative += s.percentage;
-        if (rand < cumulative) { seg = s; break; }
+    setSimResult(null);
+    try {
+      const res = await api.post(`/api/experiments/${experiment.id}/simulate`);
+      const { sent, event_ids_used, analysis_done, analysis_error } = res.data;
+      if (analysis_done) {
+        setSimResult(`${sent} events · analysis ready`);
+        await fetchEvents();
+        onAnalysisReady?.();
+      } else {
+        setSimResult(`${sent} events sent${analysis_error ? ' · analysis failed' : ''} (${event_ids_used?.join(', ')})`);
+        await fetchEvents();
       }
-
-      const eventType = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
-      const userId = `sim_user_${String(Math.floor(Math.random() * 200) + 1).padStart(3, '0')}`;
-      const timestamp = new Date(baseTime - (count - i) * 60_000 * 2).toISOString();
-
-      const payload = {
-        event_id: eventType,
-        segment_id: seg.id,
-        segment_name: seg.name,
-        experiment_id: experiment.id,
-        project_id: projectId,
-        timestamp,
-        user_id: userId,
-        metadata: { simulated: true, index: i },
-      };
-
-      try {
-        await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-      } catch {
-        // webhook might not be running locally, silently skip
-      }
-
-      setSimProgress({ sent: i + 1, total: count });
-
-      // small delay to avoid hammering
-      if (i % 10 === 9) await new Promise((r) => setTimeout(r, 80));
+    } catch (err: unknown) {
+      setSimResult('Simulation failed — is the webhook listener running?');
+      console.error('Simulate error:', err);
+    } finally {
+      setSimulating(false);
     }
-
-    setSimulating(false);
-    setSimProgress(null);
-    // Refresh to show real data
-    fetchEvents();
   };
 
   const hasData = events.length > 0;
@@ -133,16 +97,16 @@ export const ExperimentDataCard = ({ experiment, projectId }: ExperimentDataCard
         </span>
 
         <div className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          {simulating && simProgress && (
-            <span className="text-[9px] text-primary font-mono">
-              {simProgress.sent}/{simProgress.total}
+          {simResult && !simulating && (
+            <span className="text-[9px] text-slate-400 font-mono max-w-[160px] truncate" title={simResult}>
+              {simResult}
             </span>
           )}
           <button
             type="button"
             onClick={handleSimulate}
             disabled={simulating}
-            title="Simulate 60 events to local webhook"
+            title="Simulate 80 events using real event IDs"
             className="flex items-center gap-1 text-[9px] text-yellow-400 hover:text-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {simulating

@@ -326,6 +326,119 @@ def get_experiment_events(
     ]
 
 
+@router.post("/{experiment_id}/simulate")
+def simulate_experiment_events(
+    experiment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Simulate a full experiment run:
+    1. Write EventTracked rows directly into the DB (no webhook roundtrip).
+    2. Run LLM analysis immediately on those rows.
+    3. Return events + analysis so the frontend can show results right away.
+    """
+    import random
+    from datetime import datetime, timedelta, timezone
+    from src.models.event_tracked import EventTracked
+
+    project = db.query(Project).filter(Project.user_id == current_user.id).first()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No project linked")
+
+    experiment = db.query(Experiment).filter(
+        Experiment.id == experiment_id,
+        Experiment.project_id == project.id
+    ).first()
+    if not experiment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Experiment not found")
+
+    segments = experiment.segments
+    if not segments:
+        raise HTTPException(status_code=400, detail="Experiment has no segments")
+
+    # Extract real event IDs from stored events_data
+    event_ids: list[str] = []
+    if experiment.computation_logic:
+        try:
+            stored = json.loads(experiment.computation_logic)
+            if isinstance(stored.get("events"), list):
+                event_ids = [e["event_id"] for e in stored["events"] if e.get("event_id")]
+        except Exception:
+            pass
+    if not event_ids:
+        event_ids = ["page_view", "cta_click", "form_submit", "scroll_80"]
+
+    COUNT = 120
+    now = datetime.now(timezone.utc)
+
+    # Stable user→segment assignment (same user always hits same segment)
+    user_pool = [f"sim_user_{str(i).zfill(3)}" for i in range(1, 121)]
+    user_segment_map: dict[str, object] = {}
+    for uid in user_pool:
+        r = random.random()
+        cumulative = 0.0
+        chosen = segments[0]
+        for seg in segments:
+            cumulative += seg.percentage
+            if r < cumulative:
+                chosen = seg
+                break
+        user_segment_map[uid] = chosen
+
+    # Write directly into event_tracked — no HTTP, no port 8001
+    rows = []
+    for i in range(COUNT):
+        user_id = random.choice(user_pool)
+        seg = user_segment_map[user_id]
+        event_id = random.choice(event_ids)
+        offset_seconds = random.randint(0, 7 * 24 * 3600)
+        ts = (now - timedelta(seconds=offset_seconds)).isoformat()
+
+        rows.append(EventTracked(
+            project_id=project.id,
+            experiment_id=experiment.id,
+            segment_id=seg.id,
+            event_json={
+                "event_id": event_id,
+                "segment_id": seg.id,
+                "segment_name": seg.name,
+                "experiment_id": experiment.id,
+                "project_id": project.id,
+                "timestamp": ts,
+                "user_id": user_id,
+                "metadata": {"simulated": True, "index": i},
+            },
+        ))
+
+    db.bulk_save_objects(rows)
+    db.commit()
+    print(f"[simulate] Inserted {len(rows)} events for experiment {experiment_id}")
+
+    # Run LLM analysis immediately — data is already in the DB
+    analysis_done = False
+    analysis_error: str | None = None
+    try:
+        from src.services.experiment_analysis_service import ExperimentAnalysisService
+        analysis_service = ExperimentAnalysisService(db)
+        analysis_result = analysis_service.analyze_experiment(experiment_id)
+        analysis_service.save_analysis_to_db(experiment_id, analysis_result)
+        analysis_done = True
+        print(f"[simulate] Analysis complete for experiment {experiment_id}")
+    except Exception as e:
+        analysis_error = str(e)
+        print(f"[simulate] Analysis failed: {e}")
+
+    return {
+        "ok": True,
+        "sent": len(rows),
+        "event_ids_used": event_ids,
+        "segments": [s.name for s in segments],
+        "analysis_done": analysis_done,
+        "analysis_error": analysis_error,
+    }
+
+
 @router.patch("/{experiment_id}/preview-url", response_model=ExperimentResponse)
 def update_experiment_preview_url(
     experiment_id: int,
