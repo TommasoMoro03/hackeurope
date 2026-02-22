@@ -86,7 +86,7 @@ interface ExperimentResultsProps {
   experimentName: string;
 }
 
-export const ExperimentResults = ({ experimentId, experimentName }: ExperimentResultsProps) => {
+export const ExperimentResults = ({ experimentId }: ExperimentResultsProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
@@ -108,7 +108,7 @@ export const ExperimentResults = ({ experimentId, experimentName }: ExperimentRe
     }
   };
 
-  const renderChart = (plot: Plot, size: 'large' | 'small' = 'small') => {
+  const renderChart = (plot: Plot, _size: 'large' | 'small' = 'small') => {
     const chartOptions = {
       responsive: true,
       maintainAspectRatio: false,
