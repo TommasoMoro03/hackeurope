@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import ProgrammingError
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from src.database import get_db
 from src.dependencies import get_current_active_user
 from src.models.user import User
@@ -16,10 +18,13 @@ import json
 import secrets
 
 router = APIRouter(prefix="/experiments", tags=["Experiments"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/generate-name")
+@limiter.limit("30/minute")
 def generate_experiment_name(
+    request: Request,
     body: GenerateNameRequest,
     current_user: User = Depends(get_current_active_user)
 ):
@@ -63,7 +68,9 @@ Reply with ONLY the name, nothing else. No quotes. Max 4 words."""
 
 
 @router.post("", response_model=ExperimentResponse)
+@limiter.limit("20/minute")
 def create_experiment(
+    request: Request,
     experiment_data: ExperimentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -327,7 +334,9 @@ def get_experiment_events(
 
 
 @router.post("/{experiment_id}/simulate")
+@limiter.limit("20/minute")
 def simulate_experiment_events(
+    request: Request,
     experiment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -610,7 +619,9 @@ def activate_experiment(
 
 
 @router.post("/{experiment_id}/finish")
+@limiter.limit("20/minute")
 def finish_experiment(
+    request: Request,
     experiment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -763,7 +774,9 @@ def get_experiment_analysis(
 
 
 @router.post("/{experiment_id}/iterate")
+@limiter.limit("20/minute")
 def generate_next_experiment(
+    request: Request,
     experiment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)

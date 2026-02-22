@@ -51,7 +51,7 @@ export const authService = {
   clearTokens(): void {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
-    sessionStorage.removeItem('user_cache');
+    localStorage.removeItem('user_cache');
     projectCache.clear();
   },
 
@@ -61,7 +61,7 @@ export const authService = {
 
   getUserCache(): User | null {
     try {
-      const cached = sessionStorage.getItem('user_cache');
+      const cached = localStorage.getItem('user_cache');
       return cached ? (JSON.parse(cached) as User) : null;
     } catch {
       return null;
@@ -70,9 +70,9 @@ export const authService = {
 
   setUserCache(user: User | null): void {
     if (user) {
-      sessionStorage.setItem('user_cache', JSON.stringify(user));
+      localStorage.setItem('user_cache', JSON.stringify(user));
     } else {
-      sessionStorage.removeItem('user_cache');
+      localStorage.removeItem('user_cache');
     }
   },
 };

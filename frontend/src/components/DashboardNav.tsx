@@ -1,8 +1,28 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Terminal, LogOut, Github } from 'lucide-react';
+import { LogOut, Github } from 'lucide-react';
 import { RepoInfoPopup } from '@/components/RepoInfoPopup';
 import { cn } from '@/lib/utils';
+
+const PryoMark = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="pryo-g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#a855f7" />
+        <stop offset="100%" stopColor="#7c3aed" />
+      </linearGradient>
+    </defs>
+    {/* Stylised P shape as a spark/flame */}
+    <path
+      d="M6 15.5V4.5h5a3.5 3.5 0 0 1 0 7H6"
+      stroke="url(#pryo-g)"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="14" cy="14.5" r="1.5" fill="#a855f7" opacity="0.7" />
+  </svg>
+);
 
 interface Project {
   id: number;
@@ -44,13 +64,18 @@ export const DashboardNav = ({
       className="relative z-50 flex items-center justify-between gap-4 px-4 md:px-6 py-2 w-full border-b border-white/5 bg-background-dark/80 backdrop-blur-xl"
     >
       {/* Left: Brand */}
-      <Link to="/" className="flex items-center gap-2 group shrink-0">
-        <div className="size-7 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/30 flex items-center justify-center group-hover:border-primary/50 transition-colors overflow-hidden">
-          <Terminal className="w-3.5 h-3.5 text-primary-glow" />
+      <Link to="/" className="flex items-center gap-2.5 group shrink-0">
+        <div className="size-7 rounded-lg bg-gradient-to-br from-primary/25 to-violet-900/40 border border-primary/30 flex items-center justify-center group-hover:border-primary/60 group-hover:shadow-[0_0_12px_rgba(168,85,247,0.25)] transition-all overflow-hidden">
+          <PryoMark />
         </div>
-        <span className="font-display font-bold text-sm tracking-tight text-white hidden sm:inline">
-          Dashboard
-        </span>
+        <div className="hidden sm:flex flex-col leading-none">
+          <span className="font-display font-bold text-sm tracking-tight text-white">
+            Pryo
+          </span>
+          <span className="text-[8px] font-mono text-primary/60 uppercase tracking-widest leading-none mt-0.5">
+            A/B Automation
+          </span>
+        </div>
       </Link>
 
       {/* Right: Project, user, logout */}

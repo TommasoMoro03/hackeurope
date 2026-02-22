@@ -1,6 +1,10 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from src.config import settings
 from src.database import engine, Base, get_db
 from src.routes import auth, github, experiments
@@ -8,6 +12,9 @@ from src.routes import auth, github, experiments
 # Import models to ensure they're registered
 from src.models import user, project, experiment, segment
 from src.models.experiment import Experiment as ExperimentModel
+
+# Rate limiter — keyed by remote IP (works behind most proxies)
+limiter = Limiter(key_func=get_remote_address)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -39,6 +46,10 @@ app = FastAPI(
     debug=settings.DEBUG,
     lifespan=lifespan,
 )
+
+# Attach limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure CORS (allow_credentials=False when origins=["*"] per CORS spec)
 cors_origins = settings.cors_origins_list

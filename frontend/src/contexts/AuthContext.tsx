@@ -41,9 +41,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userData = await authService.getCurrentUser();
         setUser(userData);
         authService.setUserCache(userData);
-      } catch {
-        authService.clearTokens();
-        setUser(null);
+      } catch (err: any) {
+        // Only clear tokens on a definitive auth rejection (401 after refresh failed).
+        // Network errors, timeouts, etc. should not log the user out.
+        const status = err?.response?.status;
+        if (status === 401 || status === 403) {
+          authService.clearTokens();
+          setUser(null);
+        }
+        // If user was already set from cache above, keep them signed in.
       } finally {
         setIsLoading(false);
       }
