@@ -49,15 +49,15 @@ export const CreationCompletePanel = ({
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 h-full overflow-y-auto">
+    <div className="flex flex-col gap-3 p-3 h-full overflow-y-auto scrollbar-hide">
       {/* Success header */}
       <div className="text-center">
-        <div className="size-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-          <Check className="w-8 h-8 text-emerald-400" />
+        <div className="size-10 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
+          <Check className="w-5 h-5 text-emerald-400" />
         </div>
-        <h2 className="text-xl font-semibold text-white mb-1">Pull Request Created!</h2>
-        <p className="text-sm text-slate-400">
-          <span className="text-white font-medium">{experimentName}</span> is ready. Add your preview URL below to see A/B live.
+        <h2 className="text-sm font-semibold text-white mb-0.5">PR Created!</h2>
+        <p className="text-[11px] text-slate-400">
+          <span className="text-white font-medium">{experimentName}</span> — add preview URL below
         </p>
       </div>
 
@@ -74,7 +74,7 @@ export const CreationCompletePanel = ({
             instructions: segments[1].instructions,
             percentage: segments[1].percentage,
           }}
-          compact={false}
+          compact
         />
       )}
 
@@ -84,52 +84,52 @@ export const CreationCompletePanel = ({
           href={prUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-4 px-5 rounded-xl bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 transition-colors font-medium"
+          className="flex items-center justify-center gap-1.5 w-full py-2.5 px-3 rounded-lg bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 transition-colors text-xs font-medium"
         >
-          <ExternalLink className="w-5 h-5 shrink-0" />
+          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
           Open Pull Request
         </a>
       )}
 
       {/* Preview URL */}
-      <div className="glass-panel-vibe rounded-xl border border-primary/30 p-5 ring-1 ring-primary/10">
-        <div className="flex items-center gap-2 mb-3">
-          <Link2 className="w-5 h-5 text-primary" />
-          <h3 className="text-sm font-semibold text-white">Add Preview URL</h3>
+      <div className="glass-panel-vibe rounded-lg border border-primary/30 p-3 ring-1 ring-primary/10">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Link2 className="w-3.5 h-3.5 text-primary" />
+          <h3 className="text-xs font-semibold text-white">Preview URL</h3>
         </div>
-        <p className="text-xs text-slate-400 mb-4">
-          Deploy a preview (e.g. Vercel, Netlify), then paste the URL here. Control and Variant B will load with the right hashes.
+        <p className="text-[10px] text-slate-400 mb-2">
+          Paste deployed preview URL. A/B load with right hashes.
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           <input
             type="url"
             value={editPreviewUrl}
             onChange={(e) => setEditPreviewUrl(e.target.value)}
             placeholder="https://your-preview.vercel.app"
-            className="flex-1 px-4 py-3 rounded-lg border border-white/10 bg-black/30 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none font-mono text-sm"
+            className="flex-1 px-2.5 py-2 rounded border border-white/10 bg-black/30 text-white placeholder:text-slate-600 focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none font-mono text-xs min-w-0"
             disabled={savingPreview}
           />
           <button
             type="button"
             onClick={handleSavePreviewUrl}
             disabled={savingPreview || editPreviewUrl.trim() === (initialPreviewUrl ?? '')}
-            className="px-5 py-3 rounded-lg bg-primary text-white font-medium text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            className="px-3 py-2 rounded bg-primary text-white text-xs font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
           >
-            {savingPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+            {savingPreview ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}
           </button>
         </div>
       </div>
 
       {/* Continue */}
-      <div className="mt-auto pt-4">
+      <div className="mt-auto pt-2">
         <button
           onClick={() => onComplete(experimentId)}
-          className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors"
+          className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors"
         >
           Continue
         </button>
-        <p className="text-xs text-slate-500 text-center mt-2">
-          Opens the experiment. You can add preview URL later too.
+        <p className="text-[10px] text-slate-500 text-center mt-1">
+          Opens the experiment
         </p>
       </div>
     </div>

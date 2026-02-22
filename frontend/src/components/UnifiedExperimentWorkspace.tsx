@@ -56,6 +56,7 @@ interface CreationStatus {
   status: string;
   pr_url?: string | null;
   preview_url?: string | null;
+  segment_preview_hashes?: Record<string, string>;
   description?: string;
   metrics?: string;
   percentage?: number;
@@ -96,6 +97,7 @@ export const UnifiedExperimentWorkspace = ({
           status: res.data.status,
           pr_url: res.data.pr_url,
           preview_url: res.data.preview_url,
+          segment_preview_hashes: res.data.segment_preview_hashes,
           description: res.data.description,
           metrics: res.data.metrics,
           percentage: res.data.percentage,
@@ -146,6 +148,27 @@ export const UnifiedExperimentWorkspace = ({
     }
 
     if (mode === 'loading' && creatingExperiment) {
+      if (isCreationComplete) {
+        const handleUpdate = (updates: { preview_url?: string }) => {
+          if (updates.preview_url !== undefined && creationStatus) {
+            setCreationStatus((prev) => prev && { ...prev, preview_url: updates.preview_url ?? null });
+          }
+          onExperimentUpdate?.(updates);
+        };
+        return (
+          <GlassPanel title="PR Created" className="rounded-lg flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+            <CreationCompletePanel
+              experimentId={creatingExperiment.id}
+              experimentName={creatingExperiment.name}
+              prUrl={creationStatus?.pr_url}
+              initialPreviewUrl={creationStatus?.preview_url}
+              segments={creationStatus?.segments}
+              onComplete={onCreationComplete}
+              onExperimentUpdate={handleUpdate}
+            />
+          </GlassPanel>
+        );
+      }
       return (
         <>
           <GlassPanel title="Progress" className="rounded-lg flex-1 min-h-0 overflow-hidden">
@@ -155,15 +178,12 @@ export const UnifiedExperimentWorkspace = ({
               onComplete={onCreationComplete}
               onExperimentUpdate={onExperimentUpdate}
               compact
-              creationCompleteInRightPanel={isCreationComplete ?? undefined}
             />
           </GlassPanel>
           <GlassPanel title="Test Configuration" className="rounded-lg shrink-0">
             <div className="p-3">
               <h3 className="text-sm font-semibold text-white truncate">{creatingExperiment.name}</h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                {isCreationComplete ? 'PR created — add preview URL in the panel →' : 'Creating experiment...'}
-              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Creating experiment...</p>
             </div>
           </GlassPanel>
         </>
@@ -240,33 +260,31 @@ export const UnifiedExperimentWorkspace = ({
       );
     }
 
-    if (mode === 'loading') {
-      if (isCreationComplete && creatingExperiment) {
-        const handleUpdate = (updates: { preview_url?: string }) => {
-          if (updates.preview_url !== undefined && creationStatus) {
-            setCreationStatus((prev) => prev && { ...prev, preview_url: updates.preview_url ?? null });
-          }
-          onExperimentUpdate?.(updates);
-        };
-        return (
-          <CreationCompletePanel
-            experimentId={creatingExperiment.id}
-            experimentName={creatingExperiment.name}
-            prUrl={creationStatus?.pr_url}
-            initialPreviewUrl={creationStatus?.preview_url}
-            segments={creationStatus?.segments}
-            onComplete={onCreationComplete}
-            onExperimentUpdate={handleUpdate}
-          />
-        );
-      }
+    if (mode === 'loading' && creatingExperiment) {
       const cSeg = creationStatus?.segments?.[0];
       const vSeg = creationStatus?.segments?.[1];
+      const hashes = creationStatus?.segment_preview_hashes;
+      const baseUrl = (creationStatus?.preview_url ?? '').trim();
+      const sep = baseUrl.includes('?') ? '&' : '?';
+      const cHash = cSeg && hashes?.[String(cSeg.id)];
+      const vHash = vSeg && hashes?.[String(vSeg.id)];
+      const controlUrl = baseUrl && cHash ? `${baseUrl}${sep}x=${cHash}` : undefined;
+      const variantUrl = baseUrl && vHash ? `${baseUrl}${sep}x=${vHash}` : undefined;
+      const hasPreviewData = !!baseUrl;
+      const handlePreviewUrlSave = async (url: string) => {
+        await api.patch(`/api/experiments/${creatingExperiment.id}/preview-url`, {
+          preview_url: url.trim() || null,
+        });
+        setCreationStatus((prev) => prev && { ...prev, preview_url: url.trim() || null });
+        onExperimentUpdate?.({ preview_url: url.trim() || undefined });
+      };
       return (
         <SplitPreviewPanel
-          mode="loading"
+          mode={hasPreviewData ? 'live' : 'loading'}
           controlLabel={cSeg?.name ?? 'A'}
           variantLabel={vSeg?.name ?? 'B'}
+          controlUrl={controlUrl}
+          variantUrl={variantUrl}
           controlData={cSeg ? `${((cSeg.percentage ?? 0) * 100).toFixed(0)}% traffic` : undefined}
           variantData={vSeg ? `${((vSeg.percentage ?? 0) * 100).toFixed(0)}% traffic` : undefined}
           controlInstructions={cSeg?.instructions}
@@ -275,6 +293,8 @@ export const UnifiedExperimentWorkspace = ({
           variantPercentage={vSeg?.percentage}
           metrics={creationStatus?.metrics}
           description={creationStatus?.description}
+          previewUrlBase={creationStatus?.preview_url ?? ''}
+          onPreviewUrlSave={handlePreviewUrlSave}
         />
       );
     }
@@ -297,6 +317,12 @@ export const UnifiedExperimentWorkspace = ({
           : baseUrl
         : undefined;
       const hasPreviewData = !!baseUrl;
+      const handlePreviewUrlSave = async (url: string) => {
+        await api.patch(`/api/experiments/${selectedExperiment!.id}/preview-url`, {
+          preview_url: url.trim() || null,
+        });
+        onExperimentUpdate?.({ preview_url: url.trim() || undefined });
+      };
       return (
         <>
           <div className="shrink-0">
@@ -316,6 +342,8 @@ export const UnifiedExperimentWorkspace = ({
             variantPercentage={variantSeg?.percentage}
             metrics={selectedExperiment.metrics}
             description={selectedExperiment.description}
+            previewUrlBase={selectedExperiment.preview_url ?? ''}
+            onPreviewUrlSave={handlePreviewUrlSave}
           />
         </>
       );

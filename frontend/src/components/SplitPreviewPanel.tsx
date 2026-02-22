@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Smartphone, Monitor, Sparkles, Loader2, X, Maximize2 } from 'lucide-react';
+import { Smartphone, Monitor, Sparkles, Loader2, X, Maximize2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SegmentSummaryCards } from '@/components/SegmentSummaryCards';
 
@@ -31,6 +31,9 @@ interface SplitPreviewPanelProps {
   /** Experiment-level context */
   metrics?: string;
   description?: string;
+  /** Base preview URL and save callback – when set, cards show editable link */
+  previewUrlBase?: string;
+  onPreviewUrlSave?: (url: string) => Promise<void>;
 }
 
 const truncate = (s: string, len: number) =>
@@ -50,12 +53,23 @@ export const SplitPreviewPanel = ({
   variantPercentage,
   metrics,
   description,
+  previewUrlBase,
+  onPreviewUrlSave,
 }: SplitPreviewPanelProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('mobile');
   const [expanded, setExpanded] = useState<ExpandedPane>(null);
+  const [showUrlModal, setShowUrlModal] = useState(false);
+  const [editUrl, setEditUrl] = useState(previewUrlBase ?? '');
+  const [savingUrl, setSavingUrl] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   const controlSrc = controlUrl?.trim() || undefined;
   const variantSrc = variantUrl?.trim() || undefined;
+  const canEditUrl = !!(previewUrlBase !== undefined && onPreviewUrlSave);
+
+  useEffect(() => {
+    setEditUrl(previewUrlBase ?? '');
+  }, [previewUrlBase]);
 
   const desktopScale = DESKTOP_PANE_DISPLAY / DESKTOP_IFRAME_WIDTH;
   const paneWidth = viewMode === 'mobile' ? MOBILE_VIEWPORT : DESKTOP_PANE_DISPLAY;
@@ -75,6 +89,25 @@ export const SplitPreviewPanel = ({
 
   const hasSegmentData = !!(controlInstructions || variantInstructions || metrics || description);
 
+  const handleOpenUrlModal = () => {
+    setEditUrl(previewUrlBase ?? '');
+    setUrlError(null);
+    setShowUrlModal(true);
+  };
+
+  const handleSavePreviewUrl = async () => {
+    setUrlError(null);
+    setSavingUrl(true);
+    try {
+      await onPreviewUrlSave!(editUrl.trim() || '');
+      setShowUrlModal(false);
+    } catch (err: any) {
+      setUrlError(err.response?.data?.detail ?? 'Failed to update preview URL');
+    } finally {
+      setSavingUrl(false);
+    }
+  };
+
   const PreviewPane = ({
     type,
     label,
@@ -82,6 +115,8 @@ export const SplitPreviewPanel = ({
     isLoading,
     hasData,
     src,
+    canEdit,
+    onEditClick,
   }: {
     type: 'control' | 'variant';
     label: string;
@@ -89,6 +124,8 @@ export const SplitPreviewPanel = ({
     isLoading: boolean;
     hasData: boolean;
     src?: string;
+    canEdit?: boolean;
+    onEditClick?: () => void;
   }) => (
     <div
       className="flex flex-col min-w-0 flex-1"
@@ -180,17 +217,35 @@ export const SplitPreviewPanel = ({
               )}
             />
           </div>
-          <div
-            className={cn(
-              'mx-auto flex-1 max-w-[200px] rounded flex items-center justify-center font-mono truncate',
-              viewMode === 'mobile' ? 'h-4 text-[8px]' : 'h-3 text-[7px]',
-              type === 'control'
-                ? 'bg-black/20 text-slate-600'
-                : 'bg-primary/10 border border-primary/20 text-primary/70'
-            )}
-          >
-            {isLoading || !hasData ? (type === 'control' ? '-' : '-') : (src || '-')}
-          </div>
+          {canEdit && onEditClick ? (
+            <button
+              type="button"
+              onClick={onEditClick}
+              className={cn(
+                'mx-auto flex-1 max-w-[200px] rounded flex items-center justify-center gap-1 font-mono truncate min-w-0 hover:ring-1 hover:ring-white/20 cursor-pointer transition-colors',
+                viewMode === 'mobile' ? 'h-4 text-[8px]' : 'h-3 text-[7px]',
+                type === 'control'
+                  ? 'bg-black/20 text-slate-600'
+                  : 'bg-primary/10 border border-primary/20 text-primary/70'
+              )}
+              title="Edit preview URL"
+            >
+              <span className="truncate">{isLoading || !hasData ? '-' : (src || '-')}</span>
+              <Pencil className="w-2.5 h-2.5 shrink-0 opacity-60" />
+            </button>
+          ) : (
+            <div
+              className={cn(
+                'mx-auto flex-1 max-w-[200px] rounded flex items-center justify-center font-mono truncate',
+                viewMode === 'mobile' ? 'h-4 text-[8px]' : 'h-3 text-[7px]',
+                type === 'control'
+                  ? 'bg-black/20 text-slate-600'
+                  : 'bg-primary/10 border border-primary/20 text-primary/70'
+              )}
+            >
+              {isLoading || !hasData ? '-' : (src || '-')}
+            </div>
+          )}
         </div>
         <div className={cn('absolute inset-0 overflow-hidden', viewMode === 'mobile' ? 'top-8' : 'top-6')}>
           {isLoading || !hasData ? (
@@ -418,6 +473,8 @@ export const SplitPreviewPanel = ({
           isLoading={mode === 'loading'}
           hasData={!!controlSrc}
           src={controlSrc}
+          canEdit={canEditUrl}
+          onEditClick={handleOpenUrlModal}
         />
 
         <PreviewPane
@@ -427,8 +484,54 @@ export const SplitPreviewPanel = ({
           isLoading={mode === 'loading'}
           hasData={!!variantSrc}
           src={variantSrc}
+          canEdit={canEditUrl}
+          onEditClick={handleOpenUrlModal}
         />
       </div>
+
+      {showUrlModal && onPreviewUrlSave && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/20 z-[95]"
+            onClick={() => !savingUrl && setShowUrlModal(false)}
+            aria-hidden
+          />
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] w-full max-w-sm bg-zinc-900 rounded-lg shadow-lg border border-white/10 p-4">
+            <p className="text-sm font-medium text-slate-300 mb-2">Preview URL</p>
+            <input
+              type="url"
+              value={editUrl}
+              onChange={(e) => setEditUrl(e.target.value)}
+              placeholder="https://your-preview.vercel.app"
+              className="w-full rounded border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setShowUrlModal(false);
+              }}
+            />
+            {urlError && (
+              <p className="mt-1 text-xs text-red-400">{urlError}</p>
+            )}
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => !savingUrl && setShowUrlModal(false)}
+                className="px-3 py-1.5 text-sm text-slate-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePreviewUrl}
+                disabled={savingUrl}
+                className="px-3 py-1.5 text-sm bg-primary text-white rounded hover:opacity-90 disabled:opacity-50"
+              >
+                {savingUrl ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
