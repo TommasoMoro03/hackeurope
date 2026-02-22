@@ -40,6 +40,8 @@ export const Dashboard = () => {
   const [creatingExperiment, setCreatingExperiment] = useState<{ id: number; name: string } | null>(null);
   const [finishingExperiment, setFinishingExperiment] = useState<{ id: number; name: string } | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [iteratingExperiment, setIteratingExperiment] = useState<{ id: number; name: string } | null>(null);
+  const [iterationSuggestion, setIterationSuggestion] = useState<any>(null);
 
   const { data: project, isLoading: loading } = useQuery({
     queryKey: ['github-project'],
@@ -180,6 +182,56 @@ export const Dashboard = () => {
     }
   };
 
+  const handleIterateExperiment = async () => {
+    if (!selectedExperiment) return;
+
+    setIteratingExperiment({
+      id: selectedExperiment.id,
+      name: selectedExperiment.name
+    });
+    setIterationSuggestion(null);
+    setError(null);
+
+    try {
+      const response = await api.post(`/api/experiments/${selectedExperiment.id}/iterate`);
+      setIterationSuggestion(response.data.suggestion);
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail ?? 'Failed to generate iteration';
+      setError(typeof msg === 'string' ? msg : 'Failed to generate iteration');
+      console.error('Error generating iteration:', err);
+      setIteratingExperiment(null);
+    }
+  };
+
+  const handleIterationComplete = () => {
+    setIteratingExperiment(null);
+    setIterationSuggestion(null);
+  };
+
+  const handleAcceptIteration = (formData: ExperimentFormData) => {
+    // Pre-fill the form with the iteration suggestion
+    setIteratingExperiment(null);
+    setIterationSuggestion(null);
+    setSelectedExperiment(null);
+    // Create the new experiment
+    handleCreateExperiment(formData);
+  };
+
+  const handleRejectIteration = async () => {
+    // Regenerate the suggestion
+    if (!iteratingExperiment) return;
+    setIterationSuggestion(null);
+
+    try {
+      const response = await api.post(`/api/experiments/${iteratingExperiment.id}/iterate`);
+      setIterationSuggestion(response.data.suggestion);
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail ?? 'Failed to regenerate iteration';
+      setError(typeof msg === 'string' ? msg : 'Failed to regenerate iteration');
+      console.error('Error regenerating iteration:', err);
+    }
+  };
+
   if (!project && loading) {
     return (
       <AppBackground>
@@ -237,11 +289,17 @@ export const Dashboard = () => {
               selectedExperiment={selectedExperiment ?? undefined}
               onExperimentUpdate={handleExperimentUpdate}
               onFinish={handleFinishExperiment}
+              onIterate={handleIterateExperiment}
               onPRMerged={handlePRMerged}
               project={project}
               isFinishing={isFinishing}
               finishingExperiment={finishingExperiment}
               onFinishingComplete={handleFinishingComplete}
+              iteratingExperiment={iteratingExperiment}
+              iterationSuggestion={iterationSuggestion}
+              onIterationComplete={handleIterationComplete}
+              onAcceptIteration={handleAcceptIteration}
+              onRejectIteration={handleRejectIteration}
             />
           </>
         </div>

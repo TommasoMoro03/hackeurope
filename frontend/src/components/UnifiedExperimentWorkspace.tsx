@@ -10,6 +10,8 @@ import { SplitPreviewPanel } from '@/components/SplitPreviewPanel';
 import { CreationCompletePanel } from '@/components/CreationCompletePanel';
 import { ExperimentFinishing } from '@/components/ExperimentFinishing';
 import { ExperimentResultsPanel } from '@/components/ExperimentResultsPanel';
+import { ExperimentIterating } from '@/components/ExperimentIterating';
+import { ExperimentIterationSuggestion } from '@/components/ExperimentIterationSuggestion';
 import type { ExperimentFormData } from '@/components/ExperimentForm';
 import type { Experiment } from '@/types/experiment';
 
@@ -27,12 +29,18 @@ interface UnifiedExperimentWorkspaceProps {
   selectedExperiment?: Experiment | null;
   onExperimentUpdate?: (updates: Partial<Experiment>) => void;
   onFinish?: () => void;
+  onIterate?: () => void;
   onPRMerged?: () => void;
   project?: Project | null;
   percentageError?: string | null;
   isFinishing?: boolean;
   finishingExperiment?: { id: number; name: string } | null;
   onFinishingComplete?: () => void;
+  iteratingExperiment?: { id: number; name: string } | null;
+  iterationSuggestion?: any;
+  onIterationComplete?: () => void;
+  onAcceptIteration?: (formData: ExperimentFormData) => void;
+  onRejectIteration?: () => void;
 }
 
 const PR_STATUSES = ['started', 'implementing', 'pr_created'];
@@ -62,11 +70,17 @@ export const UnifiedExperimentWorkspace = ({
   selectedExperiment,
   onExperimentUpdate,
   onFinish,
+  onIterate,
   onPRMerged,
   percentageError,
   isFinishing = false,
   finishingExperiment,
   onFinishingComplete,
+  iteratingExperiment,
+  iterationSuggestion,
+  onIterationComplete,
+  onAcceptIteration,
+  onRejectIteration,
 }: UnifiedExperimentWorkspaceProps) => {
   const [creationStatus, setCreationStatus] = useState<CreationStatus | null>(null);
 
@@ -99,6 +113,17 @@ export const UnifiedExperimentWorkspace = ({
   const isCreationComplete = creationStatus && (creationStatus.status === 'pr_created' || creationStatus.status === 'active');
 
   const renderLeftCards = () => {
+    if (iteratingExperiment && onIterationComplete) {
+      return (
+        <ExperimentIterating
+          experimentId={iteratingExperiment.id}
+          experimentName={iteratingExperiment.name}
+          onComplete={onIterationComplete}
+          inline
+        />
+      );
+    }
+
     if (finishingExperiment && onFinishingComplete) {
       return (
         <ExperimentFinishing
@@ -153,6 +178,7 @@ export const UnifiedExperimentWorkspace = ({
             experiment={selectedExperiment}
             onExperimentUpdate={onExperimentUpdate}
             onFinish={onFinish}
+            onIterate={onIterate}
             isFinishing={isFinishing}
           />
           {isPRFlow && onPRMerged && (
@@ -170,6 +196,31 @@ export const UnifiedExperimentWorkspace = ({
   };
 
   const renderRightPreview = () => {
+    // Show iteration suggestion or loading when iterating
+    if (iteratingExperiment && iterationSuggestion && onAcceptIteration && onRejectIteration) {
+      return (
+        <ExperimentIterationSuggestion
+          suggestion={iterationSuggestion}
+          basedOnExperimentName={iteratingExperiment.name}
+          onAccept={onAcceptIteration}
+          onReject={onRejectIteration}
+        />
+      );
+    }
+
+    if (iteratingExperiment) {
+      return (
+        <GlassPanel className="rounded-lg flex-1 min-h-0 overflow-hidden">
+          <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
+            <div className="size-12 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-3">
+              <div className="w-6 h-6 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+            <p className="text-sm text-slate-400">Generating iteration...</p>
+          </div>
+        </GlassPanel>
+      );
+    }
+
     // Show results panel when finishing or finished
     if (finishingExperiment) {
       return (
@@ -273,7 +324,7 @@ export const UnifiedExperimentWorkspace = ({
     return null;
   };
 
-  const showSplitPreview = mode === 'loading' || (mode === 'experiment' && selectedExperiment) || finishingExperiment || selectedExperiment?.status === 'finished';
+  const showSplitPreview = mode === 'loading' || (mode === 'experiment' && selectedExperiment) || finishingExperiment || selectedExperiment?.status === 'finished' || iteratingExperiment;
 
   if (mode === 'planning') {
     return (
