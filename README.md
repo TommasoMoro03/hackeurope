@@ -2,7 +2,7 @@
 
 > Ship experiments, not spreadsheets.
 
-Deployed: https://hackeurope-frontend-production.up.railway.app/
+Deployed: https://pryo-production.up.railway.app/
 
 ---
 
