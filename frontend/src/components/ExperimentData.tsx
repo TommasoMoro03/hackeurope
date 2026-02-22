@@ -10,7 +10,7 @@ interface EventData {
     experiment_id: number;
     project_id: number;
     timestamp: string;
-    user_id?: string;
+    session_id?: string;
     metadata?: Record<string, any>;
   };
   created_at: string;
@@ -93,7 +93,7 @@ export const ExperimentData = ({ experimentId }: ExperimentDataProps) => {
                 Segment
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                User ID
+                Session ID
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Timestamp
@@ -112,8 +112,8 @@ export const ExperimentData = ({ experimentId }: ExperimentDataProps) => {
                 <td className="px-4 py-3 text-sm text-gray-900">
                   {event.event_json.segment_name}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-500">
-                  {event.event_json.user_id || '-'}
+                <td className="px-4 py-3 text-sm text-gray-500 font-mono text-xs">
+                  {event.event_json.session_id || '-'}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500">
                   {new Date(event.event_json.timestamp).toLocaleString()}

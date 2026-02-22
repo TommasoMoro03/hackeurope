@@ -6,6 +6,7 @@ from src.models.user import User
 from src.models.project import Project
 from src.models.experiment import Experiment
 from src.models.segment import Segment
+from src.models.insight_data import InsightData
 from src.schemas.experiment import ExperimentCreate, ExperimentResponse, ExperimentPreviewUrlUpdate
 from src.services.experiment_implementation_service import implement_experiment_sync
 from typing import List
@@ -306,7 +307,7 @@ def finish_experiment(
 ):
     """
     Finish an experiment and trigger analysis job.
-    This will be implemented later with actual analysis logic.
+    Analyzes results with LLM, generates plots and insights.
     """
     # Get user's project
     project = db.query(Project).filter(Project.user_id == current_user.id).first()
@@ -332,22 +333,34 @@ def finish_experiment(
     experiment.status = "finishing"
     db.commit()
 
-    # TODO: Launch background job to:
-    # 1. Collect all experiment data
-    # 2. Analyze results
-    # 3. Generate report
-    # 4. Update status to "finished"
-
-    # For now, simulate with a background thread
+    # Launch background job to analyze experiment
     def finish_job():
-        import time
         from src.database import SessionLocal
+        from src.services.experiment_analysis_service import ExperimentAnalysisService
+
         db_bg = SessionLocal()
         try:
-            time.sleep(5)  # Simulate analysis work
+            # Create analysis service
+            analysis_service = ExperimentAnalysisService(db_bg)
+
+            # Analyze experiment
+            analysis_result = analysis_service.analyze_experiment(experiment_id)
+
+            # Save analysis to database
+            analysis_service.save_analysis_to_db(experiment_id, analysis_result)
+
+            # Update experiment status to finished
             exp = db_bg.query(Experiment).filter(Experiment.id == experiment_id).first()
             if exp:
                 exp.status = "finished"
+                db_bg.commit()
+
+        except Exception as e:
+            # On error, mark as failed
+            print(f"Error analyzing experiment {experiment_id}: {str(e)}")
+            exp = db_bg.query(Experiment).filter(Experiment.id == experiment_id).first()
+            if exp:
+                exp.status = "failed"
                 db_bg.commit()
         finally:
             db_bg.close()
@@ -363,3 +376,126 @@ def finish_experiment(
         "status": experiment.status,
         "message": "Experiment finishing process started"
     }
+
+
+@router.get("/{experiment_id}/analysis")
+def get_experiment_analysis(
+    experiment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Get analysis results for a finished experiment.
+    Returns plots, insights, and winner information.
+    """
+    # Get user's project
+    project = db.query(Project).filter(Project.user_id == current_user.id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No project linked"
+        )
+
+    # Get experiment
+    experiment = db.query(Experiment).filter(
+        Experiment.id == experiment_id,
+        Experiment.project_id == project.id
+    ).first()
+
+    if not experiment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Experiment not found"
+        )
+
+    # Get analysis data
+    analysis = db.query(InsightData).filter(
+        InsightData.experiment_id == experiment_id
+    ).first()
+
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis not found. Experiment may not be finished yet."
+        )
+
+    # Return analysis with winner info
+    result = {
+        "id": analysis.id,
+        "experiment_id": analysis.experiment_id,
+        "status": analysis.status,
+        "created_at": analysis.created_at.isoformat(),
+        "analysis": analysis.json_data,
+        "winning_segment_id": experiment.winning_segment_id
+    }
+
+    # Add winning segment details if available
+    if experiment.winning_segment_id:
+        winning_segment = db.query(Segment).filter(
+            Segment.id == experiment.winning_segment_id
+        ).first()
+        if winning_segment:
+            result["winning_segment"] = {
+                "id": winning_segment.id,
+                "name": winning_segment.name,
+                "instructions": winning_segment.instructions
+            }
+
+    return result
+
+
+@router.post("/{experiment_id}/iterate")
+def generate_next_experiment(
+    experiment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Generate suggestion for next experiment based on current results.
+    Uses LLM to analyze results and propose a follow-up experiment.
+    """
+    # Get user's project
+    project = db.query(Project).filter(Project.user_id == current_user.id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No project linked"
+        )
+
+    # Get experiment
+    experiment = db.query(Experiment).filter(
+        Experiment.id == experiment_id,
+        Experiment.project_id == project.id
+    ).first()
+
+    if not experiment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Experiment not found"
+        )
+
+    # Verify experiment is finished
+    if experiment.status != "finished":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only iterate on finished experiments"
+        )
+
+    # Generate iteration suggestion
+    from src.services.experiment_iteration_service import ExperimentIterationService
+
+    try:
+        iteration_service = ExperimentIterationService(db)
+        suggestion = iteration_service.generate_next_experiment(experiment_id)
+
+        return {
+            "success": True,
+            "suggestion": suggestion,
+            "based_on_experiment_id": experiment_id,
+            "based_on_experiment_name": experiment.name
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate iteration: {str(e)}"
+        )
