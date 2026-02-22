@@ -47,6 +47,7 @@ def create_experiment(
         description=experiment_data.description,
         percentage=experiment_data.percentage,
         metrics=experiment_data.metrics,
+        preview_url=experiment_data.preview_url,
         status="started"
     )
     db.add(new_experiment)
