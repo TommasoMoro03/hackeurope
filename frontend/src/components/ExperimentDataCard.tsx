@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { GlassPanel } from '@/components/ui/glass-panel';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/axios';
+import { cn } from '@/lib/utils';
 
 interface EventData {
   id: number;
@@ -25,6 +26,7 @@ export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) =>
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const fetchEvents = async () => {
     try {
@@ -44,58 +46,67 @@ export const ExperimentDataCard = ({ experimentId }: ExperimentDataCardProps) =>
     fetchEvents();
   }, [experimentId]);
 
+  const hasData = events.length > 0;
+
   return (
-    <GlassPanel title="Raw Data" className="rounded-xl flex-1 min-h-0 overflow-hidden">
-      <div className="p-4 overflow-y-auto scrollbar-hide max-h-[300px]">
-        {loading && (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-xs text-slate-500">Loading event data...</p>
-          </div>
+    <div
+      className={cn(
+        'rounded-lg border border-white/5 overflow-hidden transition-all',
+        hasData && 'bg-black/20'
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-white/5 transition-colors"
+      >
+        <span className="text-slate-500">{expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}</span>
+        <span className="text-[10px] font-mono text-slate-500 uppercase">Raw Data</span>
+        <span className="text-[10px] text-slate-600">
+          {loading ? '…' : events.length}
+        </span>
+        {hasData && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); fetchEvents(); }}
+            className="ml-auto text-[9px] text-primary hover:text-primary-glow"
+          >
+            Refresh
+          </button>
         )}
-        {error && (
-          <div className="text-xs text-red-400 border border-red-500/30 rounded-lg px-3 py-2">
-            {error}
-          </div>
-        )}
-        {!loading && !error && events.length === 0 && (
-          <p className="text-xs text-slate-500 text-center py-4">No events tracked yet</p>
-        )}
-        {!loading && !error && events.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-mono">
-                {events.length} events
-              </span>
-              <button
-                onClick={fetchEvents}
-                className="text-[10px] text-primary hover:text-primary-glow font-medium"
-              >
-                Refresh
-              </button>
-            </div>
-            <div className="space-y-2 overflow-x-auto scrollbar-hide">
+      </button>
+      {expanded && (
+        <div className="border-t border-white/5 px-2.5 py-2 max-h-[200px] overflow-y-auto scrollbar-hide">
+          {loading && <p className="text-[10px] text-slate-500">Loading…</p>}
+          {error && (
+            <p className="text-[10px] text-red-400">{error}</p>
+          )}
+          {!loading && !error && events.length === 0 && (
+            <p className="text-[10px] text-slate-500">No events yet</p>
+          )}
+          {!loading && !error && events.length > 0 && (
+            <div className="space-y-1.5">
               {events.slice(0, 10).map((event) => (
                 <div
                   key={event.id}
-                  className="p-2 rounded border border-white/5 bg-black/20 text-xs font-mono"
+                  className="p-1.5 rounded border border-white/5 bg-black/20 text-[10px] font-mono"
                 >
                   <div className="flex justify-between gap-2">
                     <span className="text-slate-400 truncate">{event.event_json.event_id}</span>
-                    <span className="text-primary-glow shrink-0">{event.event_json.segment_name}</span>
+                    <span className="text-primary shrink-0">{event.event_json.segment_name}</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">
+                  <div className="text-[9px] text-slate-500 mt-0.5">
                     {new Date(event.event_json.timestamp).toLocaleString()}
-                    {event.event_json.user_id && ` • ${event.event_json.user_id}`}
                   </div>
                 </div>
               ))}
               {events.length > 10 && (
-                <p className="text-[10px] text-slate-500">+{events.length - 10} more</p>
+                <p className="text-[9px] text-slate-500">+{events.length - 10} more</p>
               )}
             </div>
-          </div>
-        )}
-      </div>
-    </GlassPanel>
+          )}
+        </div>
+      )}
+    </div>
   );
 };

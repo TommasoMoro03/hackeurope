@@ -164,14 +164,15 @@ export const Dashboard = () => {
     );
   };
 
-  const handlePRMerged = async () => {
-    if (!selectedExperiment) return;
+  const handlePRMerged = async (experimentId?: number) => {
+    const id = experimentId ?? selectedExperiment?.id;
+    if (!id) return;
 
     try {
-      await api.post(`/api/experiments/${selectedExperiment.id}/activate`);
+      await api.post(`/api/experiments/${id}/activate`);
       const response = await api.get('/api/experiments');
       setExperiments(response.data);
-      const updatedExperiment = response.data.find((exp: Experiment) => exp.id === selectedExperiment.id);
+      const updatedExperiment = response.data.find((exp: Experiment) => exp.id === id);
       if (updatedExperiment) {
         setSelectedExperiment(updatedExperiment);
       }

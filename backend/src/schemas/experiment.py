@@ -44,6 +44,10 @@ class ExperimentPreviewUrlUpdate(BaseModel):
     preview_url: Optional[str] = None
 
 
+class SegmentPreviewUrlsUpdate(BaseModel):
+    segment_preview_urls: Dict[str, str]  # {"segment_id": "https://..."}
+
+
 class SegmentPercentageUpdate(BaseModel):
     id: int
     percentage: float
@@ -61,6 +65,7 @@ class ExperimentResponse(ExperimentBase):
     preview_url: Optional[str] = None
     pr_url: Optional[str] = None
     segment_preview_hashes: Optional[Dict[str, str]] = None  # {"segment_id": "hash"}
+    segment_preview_urls: Optional[Dict[str, str]] = None  # {"segment_id": "url"}
     segments: List[SegmentResponse]
     created_at: datetime
 
@@ -70,6 +75,19 @@ class ExperimentResponse(ExperimentBase):
     @field_validator("segment_preview_hashes", mode="before")
     @classmethod
     def parse_preview_hashes(cls, v):
+        if v is None or v == "":
+            return None
+        if isinstance(v, str):
+            import json
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
+
+    @field_validator("segment_preview_urls", mode="before")
+    @classmethod
+    def parse_preview_urls(cls, v):
         if v is None or v == "":
             return None
         if isinstance(v, str):

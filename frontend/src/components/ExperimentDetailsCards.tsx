@@ -23,25 +23,25 @@ export const ExperimentDetailsCards = ({
 
   return (
     <>
-      {/* Config card - matches Test Configuration during create */}
-      <GlassPanel title="Test Configuration" className="rounded-lg">
-        <div className="p-3 space-y-2">
+      <GlassPanel title="Test Configuration" className="rounded-lg shrink-0">
+        <div className="p-2 space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-white truncate">{experiment.name}</h3>
+            <h3 className="text-xs font-semibold text-white truncate">{experiment.name}</h3>
             <span
               className={cn(
-                'px-2 py-0.5 rounded-full text-[10px] font-mono uppercase shrink-0',
-                experiment.status === 'active' && 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-                experiment.status === 'paused' && 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
-                !['active', 'paused'].includes(experiment.status) && 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                'px-1.5 py-0.5 rounded text-[9px] font-mono uppercase shrink-0',
+                experiment.status === 'active' && 'bg-emerald-500/20 text-emerald-400',
+                experiment.status === 'paused' && 'bg-amber-500/20 text-amber-400',
+                !['active', 'paused'].includes(experiment.status) && 'bg-slate-500/20 text-slate-400'
               )}
             >
               {experiment.status}
             </span>
           </div>
-          <p className="text-xs text-slate-500 line-clamp-2">{experiment.description}</p>
-          <div className="space-y-1.5">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Traffic split</p>
+          {experiment.description?.trim() && (
+            <p className="text-[10px] text-slate-500 line-clamp-1" title={experiment.description}>{experiment.description}</p>
+          )}
+          <div>
             <TrafficSplitSlider
               aPercent={(controlSegment?.percentage ?? 0.5) * 100}
               onSplitChange={() => {}}
@@ -50,27 +50,17 @@ export const ExperimentDetailsCards = ({
               disabled
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="p-2 rounded-lg border border-white/5 bg-black/20">
-              <p className="text-[10px] text-slate-500">Coverage</p>
-              <p className="text-lg font-bold text-white">{experiment.percentage}%</p>
-            </div>
-            <div className="p-2 rounded-lg border border-white/5 bg-black/20">
-              <p className="text-[10px] text-slate-500">Metrics</p>
-              <p className="text-xs text-white font-mono truncate" title={experiment.metrics}>
-                {experiment.metrics || '-'}
-              </p>
-            </div>
+          <div className="flex items-center gap-2 text-[10px] text-slate-500">
+            <span>{experiment.percentage}% coverage</span>
+            <span>•</span>
+            <span className="font-mono truncate" title={experiment.metrics}>{experiment.metrics || '-'}</span>
           </div>
-          <p className="text-[10px] text-slate-500">
-            Created {new Date(experiment.created_at).toLocaleDateString()}
-          </p>
           {experiment.status === 'active' && onFinish && (
             <button
               type="button"
               onClick={onFinish}
               disabled={isFinishing}
-              className="w-full mt-3 py-2 px-3 rounded-lg bg-primary hover:bg-primary-glow text-white text-xs font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full mt-2 py-2 px-2 rounded-lg bg-primary hover:bg-primary-glow text-white text-[11px] font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
             >
               {isFinishing ? (
                 <>
@@ -89,7 +79,7 @@ export const ExperimentDetailsCards = ({
             <button
               type="button"
               onClick={onIterate}
-              className="w-full mt-3 py-2 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-medium transition-all flex items-center justify-center gap-2"
+              className="w-full mt-2 py-2 px-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-[11px] font-medium transition-all flex items-center justify-center gap-1.5"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />

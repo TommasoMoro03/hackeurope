@@ -15,6 +15,7 @@ export interface Experiment {
   preview_url?: string;
   pr_url?: string;
   segment_preview_hashes?: Record<string, string>;
+  segment_preview_urls?: Record<string, string>;
   segments: Segment[];
   created_at: string;
   winning_segment_id?: number;

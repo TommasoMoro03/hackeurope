@@ -7,14 +7,14 @@ EXPERIMENT DEFINITION:
 TRACKING EVENTS:
 {{EVENTS_JSON}}
 
-PREVIEW HASHES (for ?x=HASH URL override):
+PREVIEW HASHES (for #test1, #test2 URL override):
 {{PREVIEW_HASHES_JSON}}
 
-CRITICAL - Preview mode: Each segment has a preview_hash. When the user visits the app with ?x=HASH in the URL (e.g. https://myapp.com?x=abc123xyz), the app MUST detect this and force-render that segment's variant, bypassing normal random assignment. Implement client-side logic:
-1. On load, parse URL search params for "x" (e.g. new URLSearchParams(window.location.search).get("x"))
-2. If x matches a segment's preview_hash, render that segment's variant and use that segment_id for all tracking
+CRITICAL - Preview mode: Each segment has a preview_hash (e.g. "test1", "test2"). When the user visits with a hash fragment (e.g. https://myapp.com#test1 or https://myapp.com#test2), the app MUST detect this and force-render that segment's variant. Implement client-side logic:
+1. On load, parse window.location.hash (e.g. hash.slice(1) to get "test1" or "test2")
+2. If the hash matches a segment's preview_hash, render that segment's variant and use that segment_id for all tracking
 3. Otherwise, use normal random assignment based on segment percentages
-Each segment in the experiment JSON includes "preview_hash". Use these exact values.
+Each segment in the experiment JSON includes "preview_hash". Use these exact values. Left/preview1 = #test1, right/preview2 = #test2.
 
 WEBHOOK: {{WEBHOOK_URL}}
 Payload structure:
@@ -48,9 +48,9 @@ IMPLEMENTATION:
 3. Add fetch() calls for tracking events using actual IDs from {{EXPERIMENT_JSON}}
 
 EXAMPLE (Next.js) - include preview hash check:
-// On app/experiment layout or provider: detect ?x=HASH and force segment
-const urlHash = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('x') : null;
-const forcedSegment = segments.find(s => s.preview_hash === urlHash);
+// On app/experiment layout or provider: detect #test1 or #test2 and force segment
+const hashVal = typeof window !== 'undefined' ? window.location.hash.slice(1) : null;
+const forcedSegment = segments.find(s => s.preview_hash === hashVal);
 // If forcedSegment, render that variant; else use random assignment.
 
 // NEW FILE: app/experiment-name/control/page.tsx

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Smartphone, Monitor, Sparkles, Loader2, X, Maximize2, Pencil } from 'lucide-react';
+import { Smartphone, Monitor, Loader2, X, Maximize2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SegmentSummaryCards } from '@/components/SegmentSummaryCards';
 
@@ -31,7 +31,7 @@ interface SplitPreviewPanelProps {
   /** Experiment-level context */
   metrics?: string;
   description?: string;
-  /** Base preview URL and save callback – when set, cards show editable link */
+  /** Base URL and save callback – when set, cards show editable link. URLs auto-suffix: left #test1, right #test2 */
   previewUrlBase?: string;
   onPreviewUrlSave?: (url: string) => Promise<void>;
 }
@@ -134,39 +134,6 @@ export const SplitPreviewPanel = ({
         flex: viewMode === 'desktop' ? `0 0 ${DESKTOP_PANE_DISPLAY}px` : undefined,
       }}
     >
-      <div className="flex justify-between items-center mb-2">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              'px-2 py-0.5 rounded text-[10px] font-mono border flex items-center gap-1',
-              type === 'control'
-                ? 'bg-slate-800 text-slate-300 border-slate-700'
-                : 'bg-primary/20 text-primary border-primary/30'
-            )}
-          >
-            {type === 'variant' && <Sparkles className="w-3 h-3" />}
-            {type === 'control' ? 'CONTROL' : 'VARIANT B'}
-          </span>
-          <span
-            className={cn(
-              'text-sm font-medium',
-              type === 'control' ? 'text-slate-300' : 'text-white'
-            )}
-          >
-            {label}
-          </span>
-        </div>
-        {data && (
-          <span
-            className={cn(
-              'font-mono text-xs shrink-0',
-              type === 'control' ? 'text-slate-500' : 'text-emerald-400'
-            )}
-          >
-            {data}
-          </span>
-        )}
-      </div>
       <div
         className={cn(
           'overflow-hidden relative bg-[#0e0c1a] min-w-0 transition-shadow',
@@ -438,7 +405,7 @@ export const SplitPreviewPanel = ({
       )}
 
       {hasSegmentData && (
-        <div className="mb-3">
+        <div className="mb-2">
           <SegmentSummaryCards
             control={{
               name: controlLabel,
@@ -452,16 +419,6 @@ export const SplitPreviewPanel = ({
             }}
             compact
           />
-          {(metrics?.trim() || description?.trim()) && (
-            <div className="mt-2 px-2 py-1.5 rounded bg-white/5 border border-white/5 text-[11px] text-slate-500">
-              {description?.trim() && (
-                <p className="line-clamp-1" title={description}>{truncate(description.trim(), 80)}</p>
-              )}
-              {metrics?.trim() && (
-                <p className="font-mono mt-0.5">Metrics: {truncate(metrics.trim(), 50)}</p>
-              )}
-            </div>
-          )}
         </div>
       )}
 
@@ -497,7 +454,8 @@ export const SplitPreviewPanel = ({
             aria-hidden
           />
           <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] w-full max-w-sm bg-zinc-900 rounded-lg shadow-lg border border-white/10 p-4">
-            <p className="text-sm font-medium text-slate-300 mb-2">Preview URL</p>
+            <p className="text-sm font-medium text-slate-300 mb-2">Base URL</p>
+            <p className="text-[10px] text-slate-500 mb-2">Left adds #test1, right adds #test2</p>
             <input
               type="url"
               value={editUrl}

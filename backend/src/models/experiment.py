@@ -36,6 +36,9 @@ class Experiment(Base):
     # JSON: {segment_id: preview_hash} - URL param ?x=HASH forces that variant for preview
     segment_preview_hashes = Column(String, nullable=True)  # JSON string
 
+    # JSON: {segment_id: preview_url} - per-segment preview URLs (user-set, no auto hashing)
+    segment_preview_urls = Column(String, nullable=True)  # JSON string
+
     # Winning segment id, can be null of course (at the beginning)
     winning_segment_id = Column(Integer, ForeignKey("segment.id", ondelete="SET NULL"), nullable=True)
 

@@ -8,7 +8,7 @@ from src.models.project import Project
 from src.models.experiment import Experiment
 from src.models.segment import Segment
 from src.models.insight_data import InsightData
-from src.schemas.experiment import ExperimentCreate, ExperimentResponse, ExperimentPreviewUrlUpdate, SegmentPercentagesUpdate, GenerateNameRequest
+from src.schemas.experiment import ExperimentCreate, ExperimentResponse, ExperimentPreviewUrlUpdate, SegmentPreviewUrlsUpdate, SegmentPercentagesUpdate, GenerateNameRequest
 from src.services.experiment_implementation_service import implement_experiment_sync
 from typing import List
 import threading
@@ -116,9 +116,10 @@ def create_experiment(
     db.commit()
     db.refresh(new_experiment)
 
-    # Generate preview hashes for A and B immediately (user just needs to give preview URL)
+    # Fixed preview hashes: #test1 for control, #test2 for variant (user gives base URL)
+    segments_sorted = sorted(new_experiment.segments, key=lambda s: s.id)
     segment_preview_hashes = {
-        str(seg.id): secrets.token_urlsafe(8) for seg in new_experiment.segments
+        str(seg.id): f"test{i + 1}" for i, seg in enumerate(segments_sorted)
     }
     new_experiment.segment_preview_hashes = json.dumps(segment_preview_hashes)
     db.commit()
@@ -258,6 +259,15 @@ def get_experiment_status(
             )
         except (json.JSONDecodeError, TypeError):
             pass
+    if experiment.segment_preview_urls:
+        try:
+            result["segment_preview_urls"] = (
+                json.loads(experiment.segment_preview_urls)
+                if isinstance(experiment.segment_preview_urls, str)
+                else experiment.segment_preview_urls
+            )
+        except (json.JSONDecodeError, TypeError):
+            pass
     return result
 
 
@@ -346,6 +356,46 @@ def update_experiment_preview_url(
 
     # Normalize empty/whitespace to None to avoid DB inconsistency
     experiment.preview_url = (body.preview_url or "").strip() or None
+    db.commit()
+    db.refresh(experiment)
+    return experiment
+
+
+@router.patch("/{experiment_id}/segment-preview-urls", response_model=ExperimentResponse)
+def update_segment_preview_urls(
+    experiment_id: int,
+    body: SegmentPreviewUrlsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Update per-segment preview URLs. Each segment (A/B) can have its own full URL.
+    No auto hashing - user sets the domain for each variant.
+    """
+    project = db.query(Project).filter(Project.user_id == current_user.id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No project linked"
+        )
+
+    experiment = db.query(Experiment).filter(
+        Experiment.id == experiment_id,
+        Experiment.project_id == project.id
+    ).first()
+
+    if not experiment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Experiment not found"
+        )
+
+    # Normalize: strip URLs
+    normalized = {}
+    for seg_id, url in (body.segment_preview_urls or {}).items():
+        normalized[str(seg_id)] = (url or "").strip()
+
+    experiment.segment_preview_urls = json.dumps(normalized) if normalized else None
     db.commit()
     db.refresh(experiment)
     return experiment

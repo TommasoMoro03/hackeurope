@@ -88,12 +88,13 @@ def implement_experiment_sync(experiment_id: int, db: Session):
         # STEP 1: Extract events and computation logic from metrics
         print(f"Step 1: Extracting events from metrics for experiment {experiment_id}")
 
-        # Use existing preview hashes (set at creation) or generate if missing
+        # Use existing preview hashes (test1, test2 at creation) or generate if missing
         if experiment.segment_preview_hashes:
             segment_preview_hashes = json.loads(experiment.segment_preview_hashes)
         else:
+            segments_sorted = sorted(experiment.segments, key=lambda s: s.id)
             segment_preview_hashes = {
-                str(seg.id): secrets.token_urlsafe(8) for seg in experiment.segments
+                str(seg.id): f"test{i + 1}" for i, seg in enumerate(segments_sorted)
             }
             experiment.segment_preview_hashes = json.dumps(segment_preview_hashes)
             db.commit()

@@ -48,7 +48,7 @@ export const SegmentSummaryCards = ({
         className={cn(
           'flex items-center justify-between gap-2',
           type === 'control' ? 'bg-black/20' : 'bg-primary/10',
-          compact ? 'px-2.5 py-1.5' : 'px-3 py-2'
+          compact ? 'px-2 py-1' : 'px-3 py-2'
         )}
       >
         <div className="flex items-center gap-1.5 min-w-0">
@@ -78,11 +78,11 @@ export const SegmentSummaryCards = ({
         <p
           className={cn(
             'text-slate-400 leading-snug',
-            compact ? 'px-2.5 py-2 text-[11px] line-clamp-2' : 'px-3 py-2 text-xs line-clamp-3'
+            compact ? 'px-2 py-1.5 text-[10px] line-clamp-1' : 'px-3 py-2 text-xs line-clamp-3'
           )}
           title={instructions?.trim()}
         >
-          {truncate(instructions!.trim(), 100)}
+          {truncate(instructions!.trim(), compact ? 60 : 100)}
         </p>
       )}
     </div>
