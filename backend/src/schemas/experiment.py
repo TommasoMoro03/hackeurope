@@ -44,10 +44,6 @@ class ExperimentPreviewUrlUpdate(BaseModel):
     preview_url: Optional[str] = None
 
 
-class SegmentPreviewUrlsUpdate(BaseModel):
-    segment_preview_urls: Dict[str, str]  # {"segment_id": "https://..."}
-
-
 class SegmentPercentageUpdate(BaseModel):
     id: int
     percentage: float
@@ -66,6 +62,7 @@ class ExperimentResponse(ExperimentBase):
     pr_url: Optional[str] = None
     segment_preview_hashes: Optional[Dict[str, str]] = None  # {"segment_id": "hash"}
     segment_preview_urls: Optional[Dict[str, str]] = None  # {"segment_id": "url"}
+    winning_segment_id: Optional[int] = None
     segments: List[SegmentResponse]
     created_at: datetime
 
