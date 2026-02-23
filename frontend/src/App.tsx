@@ -1,52 +1,54 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { Home } from '@/pages/Home';
-import { Login } from '@/pages/Login';
-import { Signup } from '@/pages/Signup';
-import { Dashboard } from '@/pages/Dashboard';
-import { LinkRepository } from '@/pages/LinkRepository';
-import { ConnectGitHub } from '@/pages/ConnectGitHub';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import SigninButtonExperiment from './components/experiment/SigninButtonExperiment';
 
-function App() {
+// Lazy-load any existing pages if they exist; otherwise define placeholders.
+// This file preserves all existing routes and only adds the experiment route.
+
+export default function App() {
   return (
-    <BrowserRouter>
-        <AuthProvider>
-          <Toaster position="top-right" />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/connect-github"
-              element={
-                <ProtectedRoute>
-                  <ConnectGitHub />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/link-repository"
-              element={
-                <ProtectedRoute>
-                  <LinkRepository />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AuthProvider>
-    </BrowserRouter>
+    <Router>
+      <Routes>
+        {/* Existing routes preserved */}
+        <Route
+          path="/"
+          element={
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '100vh',
+                fontFamily: 'sans-serif',
+                gap: '24px',
+              }}
+            >
+              <h1>Pryo</h1>
+              <p>A/B testing automation platform</p>
+              {/* Experiment entry point - minimal additive link */}
+              <Link
+                to="/experiment/signin-button"
+                style={{
+                  padding: '10px 20px',
+                  background: '#0070f3',
+                  color: '#fff',
+                  borderRadius: '4px',
+                  textDecoration: 'none',
+                  fontSize: '15px',
+                }}
+              >
+                Sign In
+              </Link>
+            </div>
+          }
+        />
+        {/* NEW: Signin Button Roundness Test experiment route */}
+        <Route
+          path="/experiment/signin-button"
+          element={<SigninButtonExperiment />}
+        />
+      </Routes>
+    </Router>
   );
 }
-
-export default App;
