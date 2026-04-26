@@ -2,8 +2,6 @@
 
 > Ship experiments, not spreadsheets.
 
-Deployed: https://pryo-production.up.railway.app/
-
 ---
 
 ## What is Pryo?
